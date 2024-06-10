@@ -53,7 +53,7 @@ module liquid_staking::storage {
     ) {
 
         if (self.last_refresh_epoch == ctx.epoch()) {
-            return;
+            return
         };
 
         let mut i = 0;
@@ -63,7 +63,7 @@ module liquid_staking::storage {
 
             (&mut self.validator_infos[i]).exchange_rate = *latest_exchange_rate;
 
-            refresh_validator_info(self, &mut self.validator_infos[i]);
+            refresh_validator_info(self, i);
             i = i + 1;
         };
 
@@ -78,7 +78,7 @@ module liquid_staking::storage {
         if (exchange_rate.sui_amount() == 0 || exchange_rate.pool_token_amount() == 0) {
             return token_amount
         };
-        let res = exchange_rate.sui_amount() as u128
+        let res = (exchange_rate.sui_amount() as u128)
                 * (token_amount as u128)
                 / (exchange_rate.pool_token_amount() as u128);
         res as u64
@@ -86,7 +86,8 @@ module liquid_staking::storage {
 
     /// Update the total sui amount for the validator and modify the storage sui supply accordingly
     /// assumes the exchange rate is up to date
-    fun refresh_validator_info(self: &mut Storage, validator_info: &mut ValidatorInfo) {
+    fun refresh_validator_info(self: &mut Storage, i: u64) {
+        let validator_info = &mut self.validator_infos[i];
         self.total_sui_supply = self.total_sui_supply - validator_info.total_sui_amount;
 
         let mut total_sui_amount = 0;
@@ -123,11 +124,12 @@ module liquid_staking::storage {
         stake: StakedSui, 
         ctx: &mut TxContext
     ) {
-        let validator_info = self.get_or_add_validator_info_by_staking_pool_id_mut(
+        let validator_index = self.get_or_add_validator_index_by_staking_pool_id_mut(
             system_state, 
             stake.pool_id(), 
             ctx
         );
+        let validator_info = &mut self.validator_infos[validator_index];
 
         if (stake.stake_activation_epoch() <= ctx.epoch()) {
             let fungible_stake = system_state.convert_to_fungible_stake(stake, ctx);
@@ -147,7 +149,7 @@ module liquid_staking::storage {
             };
         };
 
-        self.refresh_validator_info(validator_info);
+        self.refresh_validator_info(validator_index);
     }
 
     public(package) fun split_from_sui_pool(self: &mut Storage, amount: u64): Balance<SUI> {
@@ -167,7 +169,7 @@ module liquid_staking::storage {
             .borrow_mut()
             .split_fungible_stake(fungible_stake_amount, ctx);
 
-        self.refresh_validator_info(&mut self.validator_infos[validator_index]);
+        self.refresh_validator_info(validator_index);
 
         stake
     }
@@ -179,12 +181,11 @@ module liquid_staking::storage {
         ctx: &mut TxContext
     ): StakedSui {
         let validator_info = &mut self.validator_infos[validator_index];
-
         let stake = validator_info.inactive_stake
             .borrow_mut()
             .split(sui_amount_out, ctx);
 
-        self.refresh_validator_info(&mut self.validator_infos[validator_index]);
+        self.refresh_validator_info(validator_index);
 
         stake
     }
@@ -200,16 +201,16 @@ module liquid_staking::storage {
     }
 
     /* Private functions */
-    fun get_or_add_validator_info_by_staking_pool_id_mut(
+    fun get_or_add_validator_index_by_staking_pool_id_mut(
         self: &mut Storage, 
         system_state: &mut SuiSystemState,
         staking_pool_id: ID,
         ctx: &TxContext
-    ): &mut ValidatorInfo {
+    ): u64 {
         let mut i = 0;
         while (i < self.validator_infos.length()) {
             if (self.validator_infos[i].staking_pool_id == staking_pool_id) {
-                return &mut self.validator_infos[i];
+                return i
             };
 
             i = i + 1;
@@ -219,14 +220,14 @@ module liquid_staking::storage {
         let latest_exchange_rate = exchange_rates.borrow(ctx.epoch());
 
         self.validator_infos.push_back(ValidatorInfo {
-            staking_pool_id,
+            staking_pool_id: copy staking_pool_id,
             active_stake: option::none(),
             inactive_stake: option::none(),
             exchange_rate: *latest_exchange_rate,
             total_sui_amount: 0
         });
 
-        &mut self.validator_infos[i]
+        i
     }
 
     #[test_only] use sui::test_scenario::{Self, Scenario};
