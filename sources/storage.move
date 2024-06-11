@@ -3,6 +3,7 @@ module liquid_staking::storage {
     use sui::address;
     use sui::sui::SUI;
     use sui::balance::{Self, Balance};
+    use sui::coin::{Self, Coin};
     use std::option::{Self, Option};
     use sui::tx_context::{Self, TxContext};
     use sui_system::sui_system::{Self, SuiSystemState};
@@ -49,7 +50,7 @@ module liquid_staking::storage {
     public(package) fun refresh_storage(
         self: &mut Storage, 
         system_state: &mut SuiSystemState, 
-        ctx: &TxContext
+        ctx: &mut TxContext
     ) {
 
         if (self.last_refresh_epoch == ctx.epoch()) {
@@ -58,10 +59,27 @@ module liquid_staking::storage {
 
         let mut i = 0;
         while (i < self.validator_infos.length()) {
-            let exchange_rates = system_state.pool_exchange_rates(&self.validator_infos[i].staking_pool_id);
+            let validator_info = &mut self.validator_infos[i];
+
+            let exchange_rates = system_state.pool_exchange_rates(&validator_info.staking_pool_id);
             let latest_exchange_rate = exchange_rates.borrow(ctx.epoch());
 
-            (&mut self.validator_infos[i]).exchange_rate = *latest_exchange_rate;
+            validator_info.exchange_rate = *latest_exchange_rate;
+
+            // join inactive stake to active stake if the activation epoch is reached
+            if (validator_info.inactive_stake.is_some() && 
+                validator_info.inactive_stake.borrow().stake_activation_epoch() <= ctx.epoch())
+            {
+                let inactive_stake = validator_info.inactive_stake.extract();
+                let fungible_stake = system_state.convert_to_fungible_stake(inactive_stake, ctx);
+
+                if (validator_info.active_stake.is_some()) {
+                    validator_info.active_stake.borrow_mut().join_fungible_stake(fungible_stake);
+
+                } else {
+                    validator_info.active_stake.fill(fungible_stake);
+                };
+            };
 
             refresh_validator_info(self, i);
             i = i + 1;
@@ -159,10 +177,11 @@ module liquid_staking::storage {
 
     public(package) fun split_from_active_stake(
         self: &mut Storage, 
+        system_state: &mut SuiSystemState,
         validator_index: u64, 
         fungible_stake_amount: u64,
         ctx: &mut TxContext
-    ): FungibleStake {
+    ): StakedSui {
         let validator_info = &mut self.validator_infos[validator_index];
 
         let stake = validator_info.active_stake
@@ -171,7 +190,7 @@ module liquid_staking::storage {
 
         self.refresh_validator_info(validator_index);
 
-        stake
+        system_state.redeem_fungible_stake(stake, ctx)
     }
 
     public(package) fun split_from_inactive_stake(
@@ -188,16 +207,6 @@ module liquid_staking::storage {
         self.refresh_validator_info(validator_index);
 
         stake
-    }
-
-    public(package) fun withdraw_stake_from_validator(validator_index: u64, staked_sui_amount: u64) {
-
-        // self.refresh_validator_info(&mut self.validator_infos[validator_index]);
-
-    }
-
-    public(package) fun add_stake_to_validator(validator_index: u64, sui_amount: u64) {
-
     }
 
     /* Private functions */
@@ -254,7 +263,7 @@ module liquid_staking::storage {
         advance_epoch_with_reward_amounts(0, 0, scenario);
     }
 
-    const MIST_PER_SUI: u64 = 1_000_000_000;
+    #[test_only] const MIST_PER_SUI: u64 = 1_000_000_000;
 
     #[test_only]
     public fun stake_with(validator_index: u64, amount: u64, scenario: &mut Scenario): StakedSui {
@@ -277,7 +286,7 @@ module liquid_staking::storage {
     }
 
     #[test]
-    fun test_join() {
+    fun test_basic() {
         use sui::coin::{Self};
         let mut scenario = test_scenario::begin(@0x0);
 
@@ -291,23 +300,42 @@ module liquid_staking::storage {
         scenario.next_tx(@0x0);
 
         let mut system_state = scenario.take_shared<SuiSystemState>();
+        assert!(storage.total_sui_supply() == 0, 0);
 
-        let sui = balance::create_for_testing<SUI>(1000 * MIST_PER_SUI);
+        let sui = balance::create_for_testing<SUI>(50 * MIST_PER_SUI);
         storage.join_to_sui_pool(sui);
+
+        assert!(storage.total_sui_supply() == 50 * MIST_PER_SUI, 0);
 
         storage.join_stake(&mut system_state, staked_sui_1, scenario.ctx());
         test_scenario::return_shared(system_state);
 
-        std::debug::print(&storage);
+        assert!(storage.total_sui_supply() == 150 * MIST_PER_SUI, 0);
 
         advance_epoch_with_reward_amounts(0, 0, &mut scenario);
 
         let mut system_state = scenario.take_shared<SuiSystemState>();
+        storage.refresh_storage(&mut system_state, scenario.ctx());
+
         storage.join_stake(&mut system_state, staked_sui_2, scenario.ctx());
         test_scenario::return_shared(system_state);
 
-        std::debug::print(&storage);
-        
+        assert!(storage.total_sui_supply() == 350 * MIST_PER_SUI, 0);
+
+        advance_epoch_with_reward_amounts(0, 800, &mut scenario);
+
+        let mut system_state = scenario.take_shared<SuiSystemState>();
+        storage.refresh_storage(&mut system_state, scenario.ctx());
+
+        assert!(storage.total_sui_supply() == 650 * MIST_PER_SUI, 0);
+
+        let staked_sui = storage.split_from_active_stake(&mut system_state, 0, 150 * MIST_PER_SUI, scenario.ctx());
+        assert!(storage.total_sui_supply() == 350 * MIST_PER_SUI, 0);
+        assert!(staked_sui.staked_sui_amount() == 300 * MIST_PER_SUI, 0);
+
+        sui::test_utils::destroy(staked_sui);
+
+        test_scenario::return_shared(system_state);
 
         sui::test_utils::destroy(storage);
 
