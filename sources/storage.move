@@ -3,12 +3,12 @@ module liquid_staking::storage {
     use sui::address;
     use sui::sui::SUI;
     use sui::balance::{Self, Balance};
-    use sui::coin::{Self, Coin};
-    use std::option::{Self, Option};
-    use sui::tx_context::{Self, TxContext};
-    use sui_system::sui_system::{Self, SuiSystemState};
+    use sui::coin::{Self};
+    use sui_system::sui_system::{SuiSystemState};
+    use sui::math::min;
 
     /* Errors */
+    const EInvariantViolation: u64 = 0;
 
     public struct Storage has store {
         sui_pool: Balance<SUI>,
@@ -40,9 +40,13 @@ module liquid_staking::storage {
         }
     }
 
-    /* Getters */
+    /* Public View Functions */
     public(package) fun total_sui_supply(self: &Storage): u64 {
         self.total_sui_supply
+    }
+
+    public(package) fun validators(self: &Storage): &vector<ValidatorInfo> {
+        &self.validator_infos
     }
 
     /* Public Mutative Functions */
@@ -88,49 +92,6 @@ module liquid_staking::storage {
         self.last_refresh_epoch = ctx.epoch();
     }
 
-
-    /// copied directly from staking_pool.move
-    fun get_sui_amount(exchange_rate: &PoolTokenExchangeRate, token_amount: u64): u64 {
-        // When either amount is 0, that means we have no stakes with this pool.
-        // The other amount might be non-zero when there's dust left in the pool.
-        if (exchange_rate.sui_amount() == 0 || exchange_rate.pool_token_amount() == 0) {
-            return token_amount
-        };
-        let res = (exchange_rate.sui_amount() as u128)
-                * (token_amount as u128)
-                / (exchange_rate.pool_token_amount() as u128);
-        res as u64
-    }
-
-    /// Update the total sui amount for the validator and modify the storage sui supply accordingly
-    /// assumes the exchange rate is up to date
-    fun refresh_validator_info(self: &mut Storage, i: u64) {
-        let validator_info = &mut self.validator_infos[i];
-        self.total_sui_supply = self.total_sui_supply - validator_info.total_sui_amount;
-
-        let mut total_sui_amount = 0;
-        if (validator_info.active_stake.is_some()) {
-            let active_stake = validator_info.active_stake.borrow();
-            let active_sui_amount = get_sui_amount(
-                &validator_info.exchange_rate, 
-                active_stake.fungible_stake_value()
-            );
-
-            total_sui_amount = total_sui_amount + active_sui_amount;
-        };
-
-        if (validator_info.inactive_stake.is_some()) {
-            let inactive_stake = validator_info.inactive_stake.borrow();
-            let inactive_sui_amount = inactive_stake.staked_sui_amount();
-
-            total_sui_amount = total_sui_amount + inactive_sui_amount;
-        };
-
-        validator_info.total_sui_amount = total_sui_amount;
-        self.total_sui_supply = self.total_sui_supply + total_sui_amount;
-    }
-
-
     public(package) fun join_to_sui_pool(self: &mut Storage, sui: Balance<SUI>) {
         self.total_sui_supply = self.total_sui_supply + sui.value();
         self.sui_pool.join(sui);
@@ -175,13 +136,126 @@ module liquid_staking::storage {
         self.sui_pool.split(amount)
     }
 
-    public(package) fun split_from_active_stake(
+    public(package) fun split_up_to_n_sui_from_sui_pool(
+        self: &mut Storage, 
+        max_sui_amount_out: u64
+    ): Balance<SUI> {
+        let sui_amount_out = min(self.sui_pool.value(), max_sui_amount_out);
+        self.split_from_sui_pool(sui_amount_out)
+    }
+
+    // TODO: handle FungibleStake min size constraints
+    public(package) fun split_up_to_n_sui_from_active_stake(
+        self: &mut Storage, 
+        system_state: &mut SuiSystemState,
+        validator_index: u64, 
+        max_sui_amount_out: u64,
+        ctx: &mut TxContext
+    ): Balance<SUI> {
+        let validator_info = &mut self.validator_infos[validator_index];
+
+        if (validator_info.active_stake.is_none()) {
+            return balance::zero()
+        };
+
+        let fungible_stake_amount = validator_info.active_stake.borrow().fungible_stake_value();
+        let total_sui_amount = get_sui_amount(
+            &validator_info.exchange_rate, 
+            fungible_stake_amount 
+        );
+
+        let unstaked_sui = if (total_sui_amount <= max_sui_amount_out) {
+            self.take_active_stake(system_state, validator_index, ctx)
+        } 
+        else {
+            let split_amount = (max_sui_amount_out as u128) 
+                * (fungible_stake_amount as u128) 
+                / (total_sui_amount as u128);
+            self.split_from_active_stake(system_state, validator_index, split_amount as u64, ctx)
+        };
+
+        assert!(unstaked_sui.value() <= max_sui_amount_out, EInvariantViolation);
+
+        unstaked_sui
+    }
+
+    public(package) fun split_up_to_n_sui_from_inactive_stake(
+        self: &mut Storage, 
+        system_state: &mut SuiSystemState,
+        validator_index: u64, 
+        max_sui_amount_out: u64,
+        ctx: &mut TxContext
+    ): Balance<SUI> {
+        let validator_info = &mut self.validator_infos[validator_index];
+
+        if (validator_info.inactive_stake.is_none()) {
+            return balance::zero()
+        };
+
+        let staked_sui = if (validator_info.inactive_stake.borrow().staked_sui_amount() <= max_sui_amount_out) {
+            self.take_from_inactive_stake(validator_index)
+        } 
+        else {
+            self.split_from_inactive_stake(validator_index, max_sui_amount_out, ctx)
+        };
+
+        let unstaked_sui = system_state.request_withdraw_stake_non_entry(staked_sui, ctx);
+        assert!(unstaked_sui.value() <= max_sui_amount_out, EInvariantViolation);
+
+        unstaked_sui
+    }
+
+    /* Private Functions */
+
+    /// copied directly from staking_pool.move
+    fun get_sui_amount(exchange_rate: &PoolTokenExchangeRate, token_amount: u64): u64 {
+        // When either amount is 0, that means we have no stakes with this pool.
+        // The other amount might be non-zero when there's dust left in the pool.
+        if (exchange_rate.sui_amount() == 0 || exchange_rate.pool_token_amount() == 0) {
+            return token_amount
+        };
+        let res = (exchange_rate.sui_amount() as u128)
+                * (token_amount as u128)
+                / (exchange_rate.pool_token_amount() as u128);
+        res as u64
+    }
+
+    /// Update the total sui amount for the validator and modify the storage sui supply accordingly
+    /// assumes the exchange rate is up to date
+    fun refresh_validator_info(self: &mut Storage, i: u64) {
+        let validator_info = &mut self.validator_infos[i];
+        self.total_sui_supply = self.total_sui_supply - validator_info.total_sui_amount;
+
+        let mut total_sui_amount = 0;
+        if (validator_info.active_stake.is_some()) {
+            let active_stake = validator_info.active_stake.borrow();
+            let active_sui_amount = get_sui_amount(
+                &validator_info.exchange_rate, 
+                active_stake.fungible_stake_value()
+            );
+
+            total_sui_amount = total_sui_amount + active_sui_amount;
+        };
+
+        if (validator_info.inactive_stake.is_some()) {
+            let inactive_stake = validator_info.inactive_stake.borrow();
+            let inactive_sui_amount = inactive_stake.staked_sui_amount();
+
+            total_sui_amount = total_sui_amount + inactive_sui_amount;
+        };
+
+        validator_info.total_sui_amount = total_sui_amount;
+        self.total_sui_supply = self.total_sui_supply + total_sui_amount;
+    }
+
+
+    fun split_from_active_stake(
         self: &mut Storage, 
         system_state: &mut SuiSystemState,
         validator_index: u64, 
         fungible_stake_amount: u64,
         ctx: &mut TxContext
-    ): StakedSui {
+    ): Balance<SUI> {
         let validator_info = &mut self.validator_infos[validator_index];
 
         let stake = validator_info.active_stake
@@ -193,7 +267,21 @@ module liquid_staking::storage {
         system_state.redeem_fungible_stake(stake, ctx)
     }
 
-    public(package) fun split_from_inactive_stake(
+    fun take_active_stake(
+        self: &mut Storage, 
+        system_state: &mut SuiSystemState,
+        validator_index: u64, 
+        ctx: &mut TxContext
+    ): Balance<SUI> {
+        let validator_info = &mut self.validator_infos[validator_index];
+        let fungible_stake = validator_info.active_stake.extract();
+
+        self.refresh_validator_info(validator_index);
+
+        system_state.redeem_fungible_stake(fungible_stake, ctx)
+    }
+
+    fun split_from_inactive_stake(
         self: &mut Storage, 
         validator_index: u64, 
         sui_amount_out: u64,
@@ -203,6 +291,18 @@ module liquid_staking::storage {
         let stake = validator_info.inactive_stake
             .borrow_mut()
             .split(sui_amount_out, ctx);
+
+        self.refresh_validator_info(validator_index);
+
+        stake
+    }
+
+    fun take_from_inactive_stake(
+        self: &mut Storage, 
+        validator_index: u64, 
+    ): StakedSui {
+        let validator_info = &mut self.validator_infos[validator_index];
+        let stake = validator_info.inactive_stake.extract();
 
         self.refresh_validator_info(validator_index);
 
@@ -246,7 +346,7 @@ module liquid_staking::storage {
     };
 
     #[test_only]
-    fun setup_sui_system(scenario: &mut Scenario) {
+    fun setup_sui_system(scenario: &mut Scenario, stakes: vector<u64>) {
         use sui_system::governance_test_utils::{
             create_validators_with_stakes,
             create_sui_system_state_for_testing,
@@ -257,7 +357,7 @@ module liquid_staking::storage {
             // unstake,
         };
 
-        let validators = create_validators_with_stakes(vector[100, 100], scenario.ctx());
+        let validators = create_validators_with_stakes(stakes, scenario.ctx());
         create_sui_system_state_for_testing(validators, 0, 0, scenario.ctx());
 
         advance_epoch_with_reward_amounts(0, 0, scenario);
@@ -267,9 +367,8 @@ module liquid_staking::storage {
 
     #[test_only]
     public fun stake_with(validator_index: u64, amount: u64, scenario: &mut Scenario): StakedSui {
-        use sui::coin::{Self};
-
         scenario.next_tx(@0x0);
+
         let mut system_state = scenario.take_shared<SuiSystemState>();
 
         let ctx = scenario.ctx();
@@ -287,10 +386,9 @@ module liquid_staking::storage {
 
     #[test]
     fun test_basic() {
-        use sui::coin::{Self};
         let mut scenario = test_scenario::begin(@0x0);
 
-        setup_sui_system(&mut scenario);
+        setup_sui_system(&mut scenario, vector[100, 100]);
 
         let staked_sui_1 = stake_with(0, 100, &mut scenario);
         let staked_sui_2 = stake_with(0, 200, &mut scenario);
@@ -329,11 +427,11 @@ module liquid_staking::storage {
 
         assert!(storage.total_sui_supply() == 650 * MIST_PER_SUI, 0);
 
-        let staked_sui = storage.split_from_active_stake(&mut system_state, 0, 150 * MIST_PER_SUI, scenario.ctx());
+        let unstaked_sui = storage.split_from_active_stake(&mut system_state, 0, 150 * MIST_PER_SUI, scenario.ctx());
         assert!(storage.total_sui_supply() == 350 * MIST_PER_SUI, 0);
-        assert!(staked_sui.staked_sui_amount() == 300 * MIST_PER_SUI, 0);
+        assert!(unstaked_sui.value() == 300 * MIST_PER_SUI, 0);
 
-        sui::test_utils::destroy(staked_sui);
+        sui::test_utils::destroy(unstaked_sui);
 
         test_scenario::return_shared(system_state);
 
@@ -342,5 +440,159 @@ module liquid_staking::storage {
         scenario.end();
     }
 
+    #[test]
+    fun test_split_inactive_stake_take_all() {
+        let mut scenario = test_scenario::begin(@0x0);
 
+        setup_sui_system(&mut scenario, vector[100, 100]);
+
+        let staked_sui_1 = stake_with(0, 100, &mut scenario);
+
+        let mut storage = new();
+        assert!(storage.total_sui_supply() == 0, 0);
+
+        scenario.next_tx(@0x0);
+
+        let mut system_state = scenario.take_shared<SuiSystemState>();
+
+        storage.join_stake(&mut system_state, staked_sui_1, scenario.ctx());
+
+        let sui = storage.split_up_to_n_sui_from_inactive_stake(
+            &mut system_state, 
+            0, 
+            101 * MIST_PER_SUI, 
+            scenario.ctx()
+        );
+        assert!(sui.value() == 100 * MIST_PER_SUI, 0);
+
+        sui::test_utils::destroy(sui);
+        sui::test_utils::destroy(storage);
+
+        test_scenario::return_shared(system_state);
+
+        scenario.end();
+    }
+
+    #[test]
+    fun test_split_inactive_stake_take_partial() {
+        let mut scenario = test_scenario::begin(@0x0);
+
+        setup_sui_system(&mut scenario, vector[100, 100]);
+
+        let staked_sui_1 = stake_with(0, 100, &mut scenario);
+
+        let mut storage = new();
+        assert!(storage.total_sui_supply() == 0, 0);
+
+        scenario.next_tx(@0x0);
+
+        let mut system_state = scenario.take_shared<SuiSystemState>();
+
+        storage.join_stake(&mut system_state, staked_sui_1, scenario.ctx());
+
+        let sui = storage.split_up_to_n_sui_from_inactive_stake(
+            &mut system_state, 
+            0, 
+            50 * MIST_PER_SUI, 
+            scenario.ctx()
+        );
+        assert!(sui.value() == 50 * MIST_PER_SUI, 0);
+
+        sui::test_utils::destroy(sui);
+        sui::test_utils::destroy(storage);
+
+        test_scenario::return_shared(system_state);
+
+        scenario.end();
+    }
+
+    #[test]
+    fun test_split_active_stake_take_partial() {
+        let mut scenario = test_scenario::begin(@0x0);
+
+        setup_sui_system(&mut scenario, vector[100, 100]);
+
+        let staked_sui_1 = stake_with(0, 100, &mut scenario);
+        advance_epoch_with_reward_amounts(0, 0, &mut scenario);
+
+        // validator 0 gets 400 sui in rewards, so our staked_sui object is now worth 200 SUI
+        advance_epoch_with_reward_amounts(0, 400, &mut scenario);
+
+        scenario.next_tx(@0x0);
+
+        let mut system_state = scenario.take_shared<SuiSystemState>();
+        let mut storage = new();
+
+        storage.refresh_storage(&mut system_state, scenario.ctx());
+
+        storage.join_stake(&mut system_state, staked_sui_1, scenario.ctx());
+        assert!(storage.total_sui_supply() == 200 * MIST_PER_SUI, 0);
+
+        let sui = storage.split_up_to_n_sui_from_active_stake(
+            &mut system_state, 
+            0, 
+            100 * MIST_PER_SUI, 
+            scenario.ctx()
+        );
+
+        assert!(sui.value() == 100 * MIST_PER_SUI, 0);
+        assert!(storage.total_sui_supply() == 100 * MIST_PER_SUI, 0);
+
+        assert!(
+            storage.validators()[0].active_stake.borrow().fungible_stake_value() == 50 * MIST_PER_SUI, 
+            0
+        );
+
+        sui::test_utils::destroy(sui);
+        sui::test_utils::destroy(storage);
+
+        test_scenario::return_shared(system_state);
+
+        scenario.end();
+    }
+
+    #[test]
+    fun test_split_active_stake_take_full() {
+        let mut scenario = test_scenario::begin(@0x0);
+
+        setup_sui_system(&mut scenario, vector[100, 100]);
+
+        let staked_sui_1 = stake_with(0, 100, &mut scenario);
+        advance_epoch_with_reward_amounts(0, 0, &mut scenario);
+
+        // validator 0 gets 400 sui in rewards, so our staked_sui object is now worth 200 SUI
+        advance_epoch_with_reward_amounts(0, 400, &mut scenario);
+
+        scenario.next_tx(@0x0);
+
+        let mut system_state = scenario.take_shared<SuiSystemState>();
+        let mut storage = new();
+
+        storage.refresh_storage(&mut system_state, scenario.ctx());
+
+        storage.join_stake(&mut system_state, staked_sui_1, scenario.ctx());
+        assert!(storage.total_sui_supply() == 200 * MIST_PER_SUI, 0);
+
+        let sui = storage.split_up_to_n_sui_from_active_stake(
+            &mut system_state, 
+            0, 
+            300 * MIST_PER_SUI, 
+            scenario.ctx()
+        );
+
+        assert!(sui.value() == 200 * MIST_PER_SUI, 0);
+        assert!(storage.total_sui_supply() == 0, 0);
+
+        assert!(
+            storage.validators()[0].active_stake.is_none(),
+            0
+        );
+
+        sui::test_utils::destroy(sui);
+        sui::test_utils::destroy(storage);
+
+        test_scenario::return_shared(system_state);
+
+        scenario.end();
+    }
 }

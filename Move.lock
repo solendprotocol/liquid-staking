@@ -2,7 +2,7 @@
 
 [move]
 version = 2
-manifest_digest = "0D08BCE2F6232AB70A68D2321C3AEC5F0BD1B47C7DA21BFC71F8A81A0A6ABCBC"
+manifest_digest = "FF27328F97067FC841E6D1C5E04352F3BF3591485FE88A21EC9E570EC6288054"
 deps_digest = "3C4103934B1E040BB6B23F1D610B4EF9F2F1166A50A104EADCF77467C004C600"
 dependencies = [
   { name = "Sui" },
@@ -11,11 +11,11 @@ dependencies = [
 
 [[move.package]]
 name = "MoveStdlib"
-source = { git = "https://github.com/0xripleys/sui.git", rev = "staking_pool_lst", subdir = "crates/sui-framework/packages/move-stdlib" }
+source = { git = "https://github.com/0xripleys/sui.git", rev = "lst_prototype", subdir = "crates/sui-framework/packages/move-stdlib" }
 
 [[move.package]]
 name = "Sui"
-source = { git = "https://github.com/0xripleys/sui.git", rev = "staking_pool_lst", subdir = "crates/sui-framework/packages/sui-framework" }
+source = { git = "https://github.com/0xripleys/sui.git", rev = "lst_prototype", subdir = "crates/sui-framework/packages/sui-framework" }
 
 dependencies = [
   { name = "MoveStdlib" },
@@ -23,7 +23,7 @@ dependencies = [
 
 [[move.package]]
 name = "SuiSystem"
-source = { git = "https://github.com/0xripleys/sui.git", rev = "staking_pool_lst", subdir = "crates/sui-framework/packages/sui-system" }
+source = { git = "https://github.com/0xripleys/sui.git", rev = "lst_prototype", subdir = "crates/sui-framework/packages/sui-system" }
 
 dependencies = [
   { name = "MoveStdlib" },
