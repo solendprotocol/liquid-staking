@@ -4,7 +4,6 @@ module liquid_staking::liquid_staking {
     use sui_system::sui_system::{SuiSystemState};
     use sui::coin::{Self, Coin};
     use sui::sui::SUI;
-    use sui_system::staking_pool::StakedSui;
     use liquid_staking::storage::{Self, Storage};
 
     /* Errors */
@@ -19,6 +18,7 @@ module liquid_staking::liquid_staking {
         lst_supply: Supply<LST<P>>,
         fee_config: FeeConfig,
         fees: Balance<SUI>,
+        accrued_spread_fees: u64,
         storage: Storage
     }
 
@@ -31,7 +31,10 @@ module liquid_staking::liquid_staking {
 
     public struct FeeConfig has store {
         sui_mint_fee_bps: u64,
+        staked_sui_mint_fee_bps: u64, // unused
         redeem_fee_bps: u64,
+        staked_sui_redeem_fee_bps: u64, // unused
+        spread_fee_bps: u64
     }
 
     /* Public View Functions */
@@ -50,6 +53,7 @@ module liquid_staking::liquid_staking {
                 lst_supply: balance::create_supply(LST<P> {}),
                 fee_config,
                 fees: balance::zero(),
+                accrued_spread_fees: 0,
                 storage: storage::new(),
             }
         )
@@ -172,39 +176,61 @@ module liquid_staking::liquid_staking {
         // 1 MIST.
     }
     
+    // returns actual sui amount unstaked
     public fun decrease_validator_stake<P>(
         self: &mut LiquidStakingInfo<P>,
         _admin_cap: &AdminCap<P>,
         system_state: &mut SuiSystemState,
         validator_index: u64,
-        sui_amount: u64,
+        max_sui_amount: u64,
         ctx: &mut TxContext
-    ) {
+    ): u64 {
         self.storage.refresh_storage(system_state, ctx);
 
         let sui_from_inactive_stake = self.storage.split_up_to_n_sui_from_inactive_stake(
             system_state,
             validator_index,
-            sui_amount,
+            max_sui_amount,
             ctx
         );
         let sui_from_active_stake = self.storage.split_up_to_n_sui_from_active_stake(
             system_state,
             validator_index,
-            sui_amount - sui_from_inactive_stake.value(),
+            max_sui_amount - sui_from_inactive_stake.value(),
             ctx
         );
 
-
+        let total_sui_unstaked = sui_from_inactive_stake.value() + sui_from_active_stake.value();
         self.storage.join_to_sui_pool(sui_from_inactive_stake);
         self.storage.join_to_sui_pool(sui_from_active_stake);
 
         // TODO: invariant check. total_sui_supply should not change before and after
         // there can be some precision issues though so i think sometimes the amount of sui can decrease by 
         // 1 MIST.
+        total_sui_unstaked
     }
 
     /* Private Functions */
+    // fun refresh(
+    //     self: &mut LiquidStakingInfo<P>, 
+    //     system_state: &mut SuiSystemState, 
+    //     ctx: &mut TxContext
+    // ) {
+    //     let old_total_supply = self.storage.total_sui_supply();
+
+    //     self.storage.refresh_storage(system_state, ctx);
+
+    //     let new_total_supply = self.storage.total_sui_supply();
+
+    //     if (new_total_supply > old_total_supply) {
+    //         let spread_fee = 
+    //             ((new_total_supply - old_total_supply) as u128) 
+    //             * (self.fee_config.spread_fee_bps as u128) 
+    //             / (10_000 as u128);
+
+    //         self.accrued_spread_fees = self.accrued_spread_fees + (spread_fee as u64);
+    //     }
+    // }
 
     fun sui_amount_to_lst_amount<P>(
         lst_info: &LiquidStakingInfo<P>, 
@@ -239,7 +265,7 @@ module liquid_staking::liquid_staking {
     };
 
     #[test_only]
-    fun setup_sui_system(scenario: &mut Scenario) {
+    fun setup_sui_system(scenario: &mut Scenario, stakes: vector<u64>) {
         use sui_system::governance_test_utils::{
             create_validators_with_stakes,
             create_sui_system_state_for_testing,
@@ -250,7 +276,7 @@ module liquid_staking::liquid_staking {
             // unstake,
         };
 
-        let validators = create_validators_with_stakes(vector[100, 100], scenario.ctx());
+        let validators = create_validators_with_stakes(stakes, scenario.ctx());
         create_sui_system_state_for_testing(validators, 0, 0, scenario.ctx());
 
         advance_epoch_with_reward_amounts(0, 0, scenario);
@@ -262,7 +288,7 @@ module liquid_staking::liquid_staking {
     fun test_mint_and_redeem() {
         let mut scenario = test_scenario::begin(@0x0);
 
-        setup_sui_system(&mut scenario);
+        setup_sui_system(&mut scenario, vector[100, 100]);
 
         scenario.next_tx(@0x0);
 
@@ -270,7 +296,13 @@ module liquid_staking::liquid_staking {
         let sui = coin::mint_for_testing<SUI>(100 * MIST_PER_SUI, scenario.ctx());
 
         let (admin_cap, mut lst_info) = create_lst<TEST>(
-            FeeConfig { sui_mint_fee_bps: 100, redeem_fee_bps: 100 }, 
+            FeeConfig { 
+                sui_mint_fee_bps: 100, 
+                redeem_fee_bps: 100,
+                staked_sui_mint_fee_bps: 0,
+                staked_sui_redeem_fee_bps: 0,
+                spread_fee_bps: 0
+            }, 
             scenario.ctx()
         );
 
@@ -302,8 +334,6 @@ module liquid_staking::liquid_staking {
         sui::test_utils::destroy(sui);
         sui::test_utils::destroy(lst);
 
-        std::debug::print(&lst_info);
-
         test_scenario::return_shared(system_state);
 
         sui::test_utils::destroy(admin_cap);
@@ -311,5 +341,123 @@ module liquid_staking::liquid_staking {
 
         scenario.end();
     }
+
+    #[test]
+    fun test_increase_and_decrease_validator_stake() {
+        let mut scenario = test_scenario::begin(@0x0);
+
+        setup_sui_system(&mut scenario, vector[10, 10]);
+
+        scenario.next_tx(@0x0);
+
+        let mut system_state = scenario.take_shared<SuiSystemState>();
+        let sui = coin::mint_for_testing<SUI>(100 * MIST_PER_SUI, scenario.ctx());
+
+        let (admin_cap, mut lst_info) = create_lst<TEST>(
+            FeeConfig { 
+                sui_mint_fee_bps: 100, 
+                redeem_fee_bps: 100,
+                staked_sui_mint_fee_bps: 0,
+                staked_sui_redeem_fee_bps: 0,
+                spread_fee_bps: 0
+            }, 
+            scenario.ctx()
+        );
+
+        let lst = mint(&mut lst_info, &mut system_state, sui, scenario.ctx());
+
+        assert!(lst.value() == 99 * MIST_PER_SUI, 0);
+        assert!(lst_info.lst_supply.supply_value() == 99 * MIST_PER_SUI, 0);
+        assert!(lst_info.storage.total_sui_supply() == 99 * MIST_PER_SUI, 0);
+        assert!(lst_info.fees.value() == 1 * MIST_PER_SUI, 0);
+
+        lst_info.increase_validator_stake(
+            &admin_cap, 
+            &mut system_state, 
+            @0x0,
+            20 * MIST_PER_SUI, 
+            scenario.ctx()
+        );
+
+        assert!(lst_info.lst_supply.supply_value() == 99 * MIST_PER_SUI, 0);
+        assert!(lst_info.storage.total_sui_supply() == 99 * MIST_PER_SUI, 0);
+        assert!(
+            lst_info.storage.validators()[0].inactive_stake().borrow().staked_sui_amount() == 20 * MIST_PER_SUI, 
+            0
+        );
+
+        lst_info.increase_validator_stake(
+            &admin_cap, 
+            &mut system_state, 
+            @0x1,
+            20 * MIST_PER_SUI, 
+            scenario.ctx()
+        );
+
+        assert!(lst_info.lst_supply.supply_value() == 99 * MIST_PER_SUI, 0);
+        assert!(lst_info.storage.total_sui_supply() == 99 * MIST_PER_SUI, 0);
+        assert!(
+            lst_info.storage.validators()[1].inactive_stake().borrow().staked_sui_amount() == 20 * MIST_PER_SUI, 
+            0
+        );
+
+        test_scenario::return_shared(system_state);
+
+        scenario.next_tx(@0x0);
+        advance_epoch_with_reward_amounts(0, 20, &mut scenario);
+
+
+        scenario.next_tx(@0x0);
+        let mut system_state = scenario.take_shared<SuiSystemState>();
+
+        lst_info.increase_validator_stake(
+            &admin_cap, 
+            &mut system_state, 
+            @0x1,
+            20 * MIST_PER_SUI, 
+            scenario.ctx()
+        );
+
+        assert!(lst_info.lst_supply.supply_value() == 99 * MIST_PER_SUI, 0);
+        assert!(lst_info.storage.total_sui_supply() == 99 * MIST_PER_SUI, 0);
+        assert!(
+            lst_info.storage.validators()[1].inactive_stake().borrow().staked_sui_amount() == 20 * MIST_PER_SUI, 
+            0
+        );
+        assert!(
+            lst_info.storage.validators()[1].active_stake().borrow().fungible_stake_value() == 10 * MIST_PER_SUI, 
+            0
+        );
+
+        lst_info.decrease_validator_stake(
+            &admin_cap, 
+            &mut system_state, 
+            1,
+            40 * MIST_PER_SUI, 
+            scenario.ctx()
+        );
+
+        std::debug::print(&lst_info);
+
+        assert!(lst_info.lst_supply.supply_value() == 99 * MIST_PER_SUI, 0);
+        assert!(lst_info.storage.total_sui_supply() == 99 * MIST_PER_SUI, 0);
+        assert!(
+            lst_info.storage.validators()[1].inactive_stake().is_none(),
+            0
+        );
+        assert!(
+            lst_info.storage.validators()[1].active_stake().is_none(),
+            0
+        );
+
+        sui::test_utils::destroy(lst);
+        test_scenario::return_shared(system_state);
+
+        sui::test_utils::destroy(admin_cap);
+        sui::test_utils::destroy(lst_info);
+
+        scenario.end();
+    }
+
 
 }

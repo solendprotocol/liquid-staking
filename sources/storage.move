@@ -49,6 +49,14 @@ module liquid_staking::storage {
         &self.validator_infos
     }
 
+    public(package) fun inactive_stake(self: &ValidatorInfo): &Option<StakedSui> {
+        &self.inactive_stake
+    }
+
+    public(package) fun active_stake(self: &ValidatorInfo): &Option<FungibleStake> {
+        &self.active_stake
+    }
+
     /* Public Mutative Functions */
     /// update the total sui supply value when the epoch changes
     public(package) fun refresh_storage(
