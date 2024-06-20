@@ -34,6 +34,10 @@ module liquid_staking::liquid_staking {
         redeem_fee_bps: u64,
     }
 
+    /* Public View Functions */
+
+    /* Public Mutative Functions */
+
     // TODO: need outter wrapper to manage uniqueness of types
     public(package) fun create_lst<P: drop>(
         fee_config: FeeConfig, 
@@ -142,6 +146,65 @@ module liquid_staking::liquid_staking {
 
         coin::from_balance(sui, ctx)
     }
+
+    // Admin Functions
+    public fun increase_validator_stake<P>(
+        self: &mut LiquidStakingInfo<P>,
+        _admin_cap: &AdminCap<P>,
+        system_state: &mut SuiSystemState,
+        validator_address: address,
+        sui_amount: u64,
+        ctx: &mut TxContext
+    ) {
+        self.storage.refresh_storage(system_state, ctx);
+
+        let sui = self.storage.split_from_sui_pool(sui_amount);
+        let staked_sui = system_state.request_add_stake_non_entry(
+            coin::from_balance(sui, ctx),
+            validator_address,
+            ctx
+        );
+
+        self.storage.join_stake(system_state, staked_sui, ctx);
+
+        // TODO: invariant check. total_sui_supply should not change before and after
+        // there can be some precision issues though so i think sometimes the amount of sui can decrease by 
+        // 1 MIST.
+    }
+    
+    public fun decrease_validator_stake<P>(
+        self: &mut LiquidStakingInfo<P>,
+        _admin_cap: &AdminCap<P>,
+        system_state: &mut SuiSystemState,
+        validator_index: u64,
+        sui_amount: u64,
+        ctx: &mut TxContext
+    ) {
+        self.storage.refresh_storage(system_state, ctx);
+
+        let sui_from_inactive_stake = self.storage.split_up_to_n_sui_from_inactive_stake(
+            system_state,
+            validator_index,
+            sui_amount,
+            ctx
+        );
+        let sui_from_active_stake = self.storage.split_up_to_n_sui_from_active_stake(
+            system_state,
+            validator_index,
+            sui_amount - sui_from_inactive_stake.value(),
+            ctx
+        );
+
+
+        self.storage.join_to_sui_pool(sui_from_inactive_stake);
+        self.storage.join_to_sui_pool(sui_from_active_stake);
+
+        // TODO: invariant check. total_sui_supply should not change before and after
+        // there can be some precision issues though so i think sometimes the amount of sui can decrease by 
+        // 1 MIST.
+    }
+
+    /* Private Functions */
 
     fun sui_amount_to_lst_amount<P>(
         lst_info: &LiquidStakingInfo<P>, 

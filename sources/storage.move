@@ -152,6 +152,10 @@ module liquid_staking::storage {
         max_sui_amount_out: u64,
         ctx: &mut TxContext
     ): Balance<SUI> {
+        if (max_sui_amount_out == 0) {
+            return balance::zero()
+        };
+
         let validator_info = &mut self.validator_infos[validator_index];
 
         if (validator_info.active_stake.is_none()) {
@@ -186,6 +190,10 @@ module liquid_staking::storage {
         max_sui_amount_out: u64,
         ctx: &mut TxContext
     ): Balance<SUI> {
+        if (max_sui_amount_out == 0) {
+            return balance::zero()
+        };
+
         let validator_info = &mut self.validator_infos[validator_index];
 
         if (validator_info.inactive_stake.is_none()) {
