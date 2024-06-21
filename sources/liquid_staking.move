@@ -7,7 +7,6 @@ module liquid_staking::liquid_staking {
     use liquid_staking::storage::{Self, Storage};
 
     /* Errors */
-    const ETooMuchSuiUnstaked: u64 = 0;
     const ENotEnoughSuiUnstaked: u64 = 1;
 
     /* Constants */
@@ -66,7 +65,7 @@ module liquid_staking::liquid_staking {
         sui: Coin<SUI>, 
         ctx: &mut TxContext
     ): Coin<LST<P>> {
-        self.storage.refresh_storage(system_state, ctx);
+        self.refresh(system_state, ctx);
 
         let mut sui_balance = sui.into_balance();
 
@@ -94,49 +93,12 @@ module liquid_staking::liquid_staking {
         system_state: &mut SuiSystemState, 
         ctx: &mut TxContext
     ): Coin<SUI> {
-        self.storage.refresh_storage(system_state, ctx);
+        self.refresh(system_state, ctx);
 
         let max_sui_amount_out = self.lst_amount_to_sui_amount(lst.value());
 
-        let mut sui = balance::zero();
-
-        // 1. split from sui pool
-        sui.join(self.storage.split_up_to_n_sui_from_sui_pool(max_sui_amount_out));
-
-        // 2. split from inactive stake
-        let mut i = 0;
-        {
-            while (i < self.storage.validators().length() && sui.value() < max_sui_amount_out) {
-                let unstaked_sui = self.storage.split_up_to_n_sui_from_inactive_stake(
-                    system_state,
-                    i,
-                    max_sui_amount_out - sui.value(),
-                    ctx
-                );
-
-                sui.join(unstaked_sui);
-                i = i + 1;
-            };
-        };
-
-        // 3. split from active stake
-        {
-            let mut i = 0;
-            while (i < self.storage.validators().length() && sui.value() < max_sui_amount_out) {
-                let unstaked_sui = self.storage.split_up_to_n_sui_from_active_stake(
-                    system_state,
-                    i,
-                    max_sui_amount_out - sui.value(),
-                    ctx
-                );
-
-                sui.join(unstaked_sui);
-                i = i + 1;
-            };
-        };
-
-        assert!(sui.value() <= max_sui_amount_out, ETooMuchSuiUnstaked);
-        // TODO: add minimum unstake check
+        let mut sui = self.storage.split_up_to_n_sui(system_state, max_sui_amount_out, ctx);
+        // TODO: add minimum balance check
 
         // deduct fee
         let redeem_fee_amount = (sui.value() as u128) 
@@ -160,7 +122,7 @@ module liquid_staking::liquid_staking {
         sui_amount: u64,
         ctx: &mut TxContext
     ) {
-        self.storage.refresh_storage(system_state, ctx);
+        self.refresh(system_state, ctx);
 
         let sui = self.storage.split_from_sui_pool(sui_amount);
         let staked_sui = system_state.request_add_stake_non_entry(
@@ -185,7 +147,7 @@ module liquid_staking::liquid_staking {
         max_sui_amount: u64,
         ctx: &mut TxContext
     ): u64 {
-        self.storage.refresh_storage(system_state, ctx);
+        self.refresh(system_state, ctx);
 
         let sui_from_inactive_stake = self.storage.split_up_to_n_sui_from_inactive_stake(
             system_state,
@@ -210,51 +172,75 @@ module liquid_staking::liquid_staking {
         total_sui_unstaked
     }
 
+    public fun collect_fees<P>(
+        self: &mut LiquidStakingInfo<P>,
+        system_state: &mut SuiSystemState,
+        _admin_cap: &AdminCap<P>,
+        ctx: &mut TxContext
+    ): Coin<SUI> {
+        self.refresh(system_state, ctx);
+
+        let spread_fees = self.storage.split_up_to_n_sui(system_state, self.accrued_spread_fees, ctx);
+        self.accrued_spread_fees = self.accrued_spread_fees - spread_fees.value();
+
+        let mut fees = self.fees.withdraw_all();
+        fees.join(spread_fees);
+
+        coin::from_balance(fees, ctx)
+    }
+
     /* Private Functions */
-    // fun refresh(
-    //     self: &mut LiquidStakingInfo<P>, 
-    //     system_state: &mut SuiSystemState, 
-    //     ctx: &mut TxContext
-    // ) {
-    //     let old_total_supply = self.storage.total_sui_supply();
+    fun refresh<P>(
+        self: &mut LiquidStakingInfo<P>, 
+        system_state: &mut SuiSystemState, 
+        ctx: &mut TxContext
+    ) {
+        let old_total_supply = self.storage.total_sui_supply();
 
-    //     self.storage.refresh_storage(system_state, ctx);
+        if (self.storage.refresh_storage(system_state, ctx)) {
+            let new_total_supply = self.storage.total_sui_supply();
+            if (new_total_supply > old_total_supply) {
+                let spread_fee = 
+                    ((new_total_supply - old_total_supply) as u128) 
+                    * (self.fee_config.spread_fee_bps as u128) 
+                    / (10_000 as u128);
 
-    //     let new_total_supply = self.storage.total_sui_supply();
-
-    //     if (new_total_supply > old_total_supply) {
-    //         let spread_fee = 
-    //             ((new_total_supply - old_total_supply) as u128) 
-    //             * (self.fee_config.spread_fee_bps as u128) 
-    //             / (10_000 as u128);
-
-    //         self.accrued_spread_fees = self.accrued_spread_fees + (spread_fee as u64);
-    //     }
-    // }
+                self.accrued_spread_fees = self.accrued_spread_fees + (spread_fee as u64);
+            }
+        }
+    }
 
     fun sui_amount_to_lst_amount<P>(
-        lst_info: &LiquidStakingInfo<P>, 
+        self: &LiquidStakingInfo<P>, 
         sui_amount: u64
     ): u64 {
-        let total_sui_supply = lst_info.storage.total_sui_supply();
-        let total_lst_supply = balance::supply_value(&lst_info.lst_supply);
+        let total_sui_supply = self.storage.total_sui_supply();
+        let total_lst_supply = balance::supply_value(&self.lst_supply);
 
         if (total_sui_supply == 0) {
             return sui_amount
         };
 
-        ((total_lst_supply as u128) * (sui_amount as u128) / (total_sui_supply as u128)) as u64
+        let lst_amount = ((total_lst_supply as u128) - (self.accrued_spread_fees as u128)) 
+         * (sui_amount as u128) 
+         / (total_sui_supply as u128);
+
+        lst_amount as u64
     }
 
     fun lst_amount_to_sui_amount<P>(
-        lst_info: &LiquidStakingInfo<P>, 
+        self: &LiquidStakingInfo<P>, 
         lst_amount: u64
     ): u64 {
-        let total_sui_supply = lst_info.storage.total_sui_supply();
-        let total_lst_supply = balance::supply_value(&lst_info.lst_supply);
+        let total_sui_supply = self.storage.total_sui_supply();
+        let total_lst_supply = balance::supply_value(&self.lst_supply);
 
         // div by zero case should never happen
-        ((total_sui_supply as u128) * (lst_amount as u128) / (total_lst_supply as u128)) as u64
+        let sui_amount = ((total_sui_supply as u128) - (self.accrued_spread_fees as u128))
+            * (lst_amount as u128) 
+            / (total_lst_supply as u128);
+
+        sui_amount as u64
     }
 
     #[test_only] use sui::test_scenario::{Self, Scenario};
@@ -458,6 +444,84 @@ module liquid_staking::liquid_staking {
 
         scenario.end();
     }
+
+    #[test]
+    fun test_spread_fee() {
+        let mut scenario = test_scenario::begin(@0x0);
+
+        setup_sui_system(&mut scenario, vector[100, 100]);
+
+        scenario.next_tx(@0x0);
+
+        let mut system_state = scenario.take_shared<SuiSystemState>();
+
+        let (admin_cap, mut lst_info) = create_lst<TEST>(
+            FeeConfig { 
+                sui_mint_fee_bps: 0, 
+                redeem_fee_bps: 0,
+                staked_sui_mint_fee_bps: 0,
+                staked_sui_redeem_fee_bps: 0,
+                spread_fee_bps: 1000, // 10%
+            }, 
+            scenario.ctx()
+        );
+
+        let sui = coin::mint_for_testing<SUI>(100 * MIST_PER_SUI, scenario.ctx());
+        let lst = mint(&mut lst_info, &mut system_state, sui, scenario.ctx());
+
+        assert!(lst.value() == 100 * MIST_PER_SUI, 0);
+
+        lst_info.increase_validator_stake(
+            &admin_cap, 
+            &mut system_state, 
+            @0x0,
+            50 * MIST_PER_SUI, 
+            scenario.ctx()
+        );
+        lst_info.increase_validator_stake(
+            &admin_cap, 
+            &mut system_state, 
+            @0x1,
+            50 * MIST_PER_SUI, 
+            scenario.ctx()
+        );
+
+        test_scenario::return_shared(system_state);
+
+        scenario.next_tx(@0x0);
+        advance_epoch_with_reward_amounts(0, 0, &mut scenario);
+
+        // got 100 SUI of rewards, 10 of that should be spread fee
+        advance_epoch_with_reward_amounts(0, 300, &mut scenario);
+
+        let mut system_state = scenario.take_shared<SuiSystemState>();
+        let sui = lst_info.redeem(
+            lst,
+            &mut system_state, 
+            scenario.ctx()
+        );
+
+        assert!(sui.value() == 190 * MIST_PER_SUI, 0);
+        assert!(lst_info.storage.total_sui_supply() == 10 * MIST_PER_SUI, 0);
+        assert!(lst_info.accrued_spread_fees == 10 * MIST_PER_SUI, 0);
+
+        let fees = lst_info.collect_fees(&mut system_state, &admin_cap, scenario.ctx());
+        assert!(fees.value() == 10 * MIST_PER_SUI, 0);
+        assert!(lst_info.accrued_spread_fees == 0, 0);
+        assert!(lst_info.storage.total_sui_supply() == 0, 0);
+
+        std::debug::print(&lst_info);
+
+        sui::test_utils::destroy(sui);
+        sui::test_utils::destroy(fees);
+        test_scenario::return_shared(system_state);
+
+        sui::test_utils::destroy(admin_cap);
+        sui::test_utils::destroy(lst_info);
+
+        scenario.end();
+    }
+
 
 
 }

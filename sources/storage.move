@@ -9,6 +9,7 @@ module liquid_staking::storage {
 
     /* Errors */
     const EInvariantViolation: u64 = 0;
+    const ETooMuchSuiUnstaked: u64 = 1;
 
     public struct Storage has store {
         sui_pool: Balance<SUI>,
@@ -59,14 +60,15 @@ module liquid_staking::storage {
 
     /* Public Mutative Functions */
     /// update the total sui supply value when the epoch changes
+    /// returns true if the storage was updated
     public(package) fun refresh_storage(
         self: &mut Storage, 
         system_state: &mut SuiSystemState, 
         ctx: &mut TxContext
-    ) {
+    ): bool {
 
         if (self.last_refresh_epoch == ctx.epoch()) {
-            return
+            return false
         };
 
         let mut i = 0;
@@ -98,6 +100,7 @@ module liquid_staking::storage {
         };
 
         self.last_refresh_epoch = ctx.epoch();
+        true
     }
 
     public(package) fun join_to_sui_pool(self: &mut Storage, sui: Balance<SUI>) {
@@ -219,6 +222,58 @@ module liquid_staking::storage {
         assert!(unstaked_sui.value() <= max_sui_amount_out, EInvariantViolation);
 
         unstaked_sui
+    }
+
+    public(package) fun split_up_to_n_sui(
+        self: &mut Storage,
+        system_state: &mut SuiSystemState,
+        max_sui_amount_out: u64,
+        ctx: &mut TxContext
+    ): Balance<SUI> {
+        if (max_sui_amount_out == 0) {
+            return balance::zero()
+        };
+
+        let mut sui = balance::zero();
+
+        // 1. split from sui pool
+        sui.join(self.split_up_to_n_sui_from_sui_pool(max_sui_amount_out));
+
+        // 2. split from inactive stake
+        let mut i = 0;
+        {
+            while (i < self.validators().length() && sui.value() < max_sui_amount_out) {
+                let unstaked_sui = self.split_up_to_n_sui_from_inactive_stake(
+                    system_state,
+                    i,
+                    max_sui_amount_out - sui.value(),
+                    ctx
+                );
+
+                sui.join(unstaked_sui);
+                i = i + 1;
+            };
+        };
+
+        // 3. split from active stake
+        {
+            let mut i = 0;
+            while (i < self.validators().length() && sui.value() < max_sui_amount_out) {
+                let unstaked_sui = self.split_up_to_n_sui_from_active_stake(
+                    system_state,
+                    i,
+                    max_sui_amount_out - sui.value(),
+                    ctx
+                );
+
+                sui.join(unstaked_sui);
+                i = i + 1;
+            };
+        };
+
+        assert!(sui.value() <= max_sui_amount_out, ETooMuchSuiUnstaked);
+
+        sui
     }
 
     /* Private Functions */
