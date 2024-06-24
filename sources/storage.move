@@ -61,7 +61,7 @@ module liquid_staking::storage {
     /* Public Mutative Functions */
     /// update the total sui supply value when the epoch changes
     /// returns true if the storage was updated
-    public(package) fun refresh_storage(
+    public(package) fun refresh(
         self: &mut Storage, 
         system_state: &mut SuiSystemState, 
         ctx: &mut TxContext
@@ -484,7 +484,7 @@ module liquid_staking::storage {
         advance_epoch_with_reward_amounts(0, 0, &mut scenario);
 
         let mut system_state = scenario.take_shared<SuiSystemState>();
-        storage.refresh_storage(&mut system_state, scenario.ctx());
+        storage.refresh(&mut system_state, scenario.ctx());
 
         storage.join_stake(&mut system_state, staked_sui_2, scenario.ctx());
         test_scenario::return_shared(system_state);
@@ -494,7 +494,7 @@ module liquid_staking::storage {
         advance_epoch_with_reward_amounts(0, 800, &mut scenario);
 
         let mut system_state = scenario.take_shared<SuiSystemState>();
-        storage.refresh_storage(&mut system_state, scenario.ctx());
+        storage.refresh(&mut system_state, scenario.ctx());
 
         assert!(storage.total_sui_supply() == 650 * MIST_PER_SUI, 0);
 
@@ -594,7 +594,7 @@ module liquid_staking::storage {
         let mut system_state = scenario.take_shared<SuiSystemState>();
         let mut storage = new();
 
-        storage.refresh_storage(&mut system_state, scenario.ctx());
+        storage.refresh(&mut system_state, scenario.ctx());
 
         storage.join_stake(&mut system_state, staked_sui_1, scenario.ctx());
         assert!(storage.total_sui_supply() == 200 * MIST_PER_SUI, 0);
@@ -639,7 +639,7 @@ module liquid_staking::storage {
         let mut system_state = scenario.take_shared<SuiSystemState>();
         let mut storage = new();
 
-        storage.refresh_storage(&mut system_state, scenario.ctx());
+        storage.refresh(&mut system_state, scenario.ctx());
 
         storage.join_stake(&mut system_state, staked_sui_1, scenario.ctx());
         assert!(storage.total_sui_supply() == 200 * MIST_PER_SUI, 0);
