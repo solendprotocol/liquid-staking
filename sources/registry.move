@@ -1,9 +1,6 @@
 module liquid_staking::registry {
     use sui::table::{Self, Table};
-    use sui::object::{Self, ID, UID};
     use std::type_name::{Self, TypeName};
-    use sui::tx_context::{TxContext};
-    use sui::transfer::{Self};
     use sui::dynamic_field::{Self};
 
     use liquid_staking::liquid_staking::{Self, LiquidStakingInfo, AdminCap, FeeConfig};
@@ -54,4 +51,74 @@ module liquid_staking::registry {
 
         (admin_cap, liquid_staking_info)
     }
+
+    #[test_only] public struct LST_1 has drop {}
+    #[test_only] public struct LST_2 has drop {}
+
+    #[test]
+    fun test_happy() {
+        use sui::test_utils::{Self};
+        use sui::test_scenario::{Self};
+
+        let owner = @0x26;
+        let mut scenario = test_scenario::begin(owner);
+
+        init(scenario.ctx());
+        scenario.next_tx(owner);
+
+        let mut registry = test_scenario::take_shared<Registry>(&scenario);
+
+        let (admin_cap_1, liquid_staking_info_1) = create_lst<LST_1>(
+            &mut registry, 
+            liquid_staking::create_fee_config(0,0,0,0,0),
+            test_scenario::ctx(&mut scenario)
+        );
+        
+        let (admin_cap_2, liquid_staking_info_2) = create_lst<LST_2>(
+            &mut registry, 
+            liquid_staking::create_fee_config(0,0,0,0,0),
+            test_scenario::ctx(&mut scenario)
+        );
+
+        test_scenario::return_shared(registry);
+        test_utils::destroy(admin_cap_1);
+        test_utils::destroy(admin_cap_2);
+        test_utils::destroy(liquid_staking_info_1);
+        test_utils::destroy(liquid_staking_info_2);
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 0, location = dynamic_field)]
+    fun test_fail_duplicate_lending_market_type() {
+        use sui::test_utils::{Self};
+        use sui::test_scenario::{Self};
+
+        let owner = @0x26;
+        let mut scenario = test_scenario::begin(owner);
+
+        init(scenario.ctx());
+        scenario.next_tx(owner);
+
+        let mut registry = test_scenario::take_shared<Registry>(&scenario);
+        let (admin_cap_1, liquid_staking_info_1) = create_lst<LST_1>(
+            &mut registry, 
+            liquid_staking::create_fee_config(0,0,0,0,0),
+            scenario.ctx()
+        );
+        
+        let (admin_cap_2, liquid_staking_info_2) = create_lst<LST_1>(
+            &mut registry, 
+            liquid_staking::create_fee_config(0,0,0,0,0),
+            test_scenario::ctx(&mut scenario)
+        );
+
+        test_scenario::return_shared(registry);
+        test_utils::destroy(admin_cap_1);
+        test_utils::destroy(admin_cap_2);
+        test_utils::destroy(liquid_staking_info_1);
+        test_utils::destroy(liquid_staking_info_2);
+        test_scenario::end(scenario);
+    }
+
 }

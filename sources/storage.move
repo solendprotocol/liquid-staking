@@ -6,6 +6,7 @@ module liquid_staking::storage {
     use sui::coin::{Self};
     use sui_system::sui_system::{SuiSystemState};
     use sui::math::min;
+    use sui::bag::{Self, Bag};
 
     /* Errors */
     const EInvariantViolation: u64 = 0;
@@ -18,6 +19,7 @@ module liquid_staking::storage {
         // sum of all active and inactive stake
         total_sui_supply: u64,
         last_refresh_epoch: u64,
+        extra_fields: Bag
     }
 
     public struct ValidatorInfo has store {
@@ -32,12 +34,13 @@ module liquid_staking::storage {
         total_sui_amount: u64
     }
 
-    public(package) fun new(): Storage {
+    public(package) fun new(ctx: &mut TxContext): Storage {
         Storage {
             sui_pool: balance::zero(),
             validator_infos: vector::empty(),
             total_sui_supply: 0,
             last_refresh_epoch: 0,
+            extra_fields: bag::new(ctx)
         }
     }
 
@@ -410,6 +413,8 @@ module liquid_staking::storage {
         i
     }
 
+    /* Tests */
+
     #[test_only] use sui::test_scenario::{Self, Scenario};
     #[test_only]
     use sui_system::governance_test_utils::{
@@ -464,7 +469,7 @@ module liquid_staking::storage {
         let staked_sui_1 = stake_with(0, 100, &mut scenario);
         let staked_sui_2 = stake_with(0, 200, &mut scenario);
 
-        let mut storage = new();
+        let mut storage = new(scenario.ctx());
 
         scenario.next_tx(@0x0);
 
@@ -519,7 +524,7 @@ module liquid_staking::storage {
 
         let staked_sui_1 = stake_with(0, 100, &mut scenario);
 
-        let mut storage = new();
+        let mut storage = new(scenario.ctx());
         assert!(storage.total_sui_supply() == 0, 0);
 
         scenario.next_tx(@0x0);
@@ -552,7 +557,7 @@ module liquid_staking::storage {
 
         let staked_sui_1 = stake_with(0, 100, &mut scenario);
 
-        let mut storage = new();
+        let mut storage = new(scenario.ctx());
         assert!(storage.total_sui_supply() == 0, 0);
 
         scenario.next_tx(@0x0);
@@ -592,7 +597,7 @@ module liquid_staking::storage {
         scenario.next_tx(@0x0);
 
         let mut system_state = scenario.take_shared<SuiSystemState>();
-        let mut storage = new();
+        let mut storage = new(scenario.ctx());
 
         storage.refresh(&mut system_state, scenario.ctx());
 
@@ -637,7 +642,7 @@ module liquid_staking::storage {
         scenario.next_tx(@0x0);
 
         let mut system_state = scenario.take_shared<SuiSystemState>();
-        let mut storage = new();
+        let mut storage = new(scenario.ctx());
 
         storage.refresh(&mut system_state, scenario.ctx());
 

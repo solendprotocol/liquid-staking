@@ -5,6 +5,7 @@ module liquid_staking::liquid_staking {
     use sui::coin::{Self, Coin};
     use sui::sui::SUI;
     use liquid_staking::storage::{Self, Storage};
+    use sui::bag::{Self, Bag};
 
     /* Errors */
     const ENotEnoughSuiUnstaked: u64 = 1;
@@ -15,7 +16,8 @@ module liquid_staking::liquid_staking {
         fee_config: FeeConfig,
         fees: Balance<SUI>,
         accrued_spread_fees: u64,
-        storage: Storage
+        storage: Storage,
+        extra_fields: Bag
     }
 
     public struct AdminCap<phantom P> has key, store { 
@@ -25,6 +27,7 @@ module liquid_staking::liquid_staking {
     public struct LST<phantom P> has drop, copy {}
 
 
+    // TODO: will we have more fees?
     public struct FeeConfig has store {
         sui_mint_fee_bps: u64,
         staked_sui_mint_fee_bps: u64, // unused
@@ -61,7 +64,6 @@ module liquid_staking::liquid_staking {
 
     /* Public Mutative Functions */
 
-    // TODO: need outter wrapper to manage uniqueness of types
     public(package) fun create_lst<P: drop>(
         fee_config: FeeConfig, 
         ctx: &mut TxContext
@@ -74,7 +76,8 @@ module liquid_staking::liquid_staking {
                 fee_config,
                 fees: balance::zero(),
                 accrued_spread_fees: 0,
-                storage: storage::new(),
+                storage: storage::new(ctx),
+                extra_fields: bag::new(ctx)
             }
         )
     }
