@@ -8,6 +8,7 @@ module liquid_staking::liquid_staking_tests {
     use sui::sui::SUI;
     use liquid_staking::liquid_staking::{Self, LiquidStakingInfo, LST};
     use liquid_staking::registry::{Self};
+    use liquid_staking::fees::{Self};
     use sui_system::governance_test_utils::{
         // Self,
         // add_validator,
@@ -59,7 +60,10 @@ module liquid_staking::liquid_staking_tests {
         let mut registry = registry::create_for_testing(scenario.ctx());
 
         let (admin_cap, mut lst_info) = registry.create_lst<TEST>(
-            liquid_staking::create_fee_config(100, 0, 100, 0, 0),
+            fees::new_builder(scenario.ctx())
+                .set_sui_mint_fee_bps(100)
+                .set_redeem_fee_bps(100)
+                .to_fee_config(),
             scenario.ctx()
         );
 
@@ -113,7 +117,10 @@ module liquid_staking::liquid_staking_tests {
         let mut registry = registry::create_for_testing(scenario.ctx());
 
         let (admin_cap, mut lst_info) = registry.create_lst<TEST>(
-            liquid_staking::create_fee_config(100, 0, 100, 0, 0),
+            fees::new_builder(scenario.ctx())
+                .set_sui_mint_fee_bps(100)
+                .set_redeem_fee_bps(100)
+                .to_fee_config(),
             scenario.ctx()
         );
 
@@ -226,7 +233,9 @@ module liquid_staking::liquid_staking_tests {
         let mut registry = registry::create_for_testing(scenario.ctx());
 
         let (admin_cap, mut lst_info) = registry.create_lst<TEST>(
-            liquid_staking::create_fee_config(0, 0, 0, 0, 1000), // 10% spread fee
+            fees::new_builder(scenario.ctx())
+                .set_spread_fee_bps(1000)
+                .to_fee_config(),
             scenario.ctx()
         );
 

@@ -7,14 +7,16 @@ module liquid_staking::liquid_staking {
     use liquid_staking::storage::{Self, Storage};
     use sui::bag::{Self, Bag};
     use sui::math::max;
+    use liquid_staking::fees::{FeeConfig};
+    use liquid_staking::cell::{Self, Cell};
 
     /* Errors */
-    const ENotEnoughSuiUnstaked: u64 = 1;
+    const ENotEnoughSuiUnstaked: u64 = 0;
 
     public struct LiquidStakingInfo<phantom P> has key, store {
         id: UID,
         lst_supply: Supply<LST<P>>,
-        fee_config: FeeConfig,
+        fee_config: Cell<FeeConfig>,
         fees: Balance<SUI>,
         accrued_spread_fees: u64,
         storage: Storage,
@@ -28,16 +30,8 @@ module liquid_staking::liquid_staking {
     public struct LST<phantom P> has drop, copy {}
 
 
-    // TODO: will we have more fees?
-    public struct FeeConfig has store, drop {
-        sui_mint_fee_bps: u64,
-        staked_sui_mint_fee_bps: u64, // unused
-        redeem_fee_bps: u64,
-        staked_sui_redeem_fee_bps: u64, // unused
-        spread_fee_bps: u64
-    }
-
     /* Public View Functions */
+
     // returns total sui managed by the LST. Note that this value might be out of date if the 
     // LiquidStakingInfo object is out of date.
     public fun total_sui_supply<P>(self: &LiquidStakingInfo<P>): u64 {
@@ -74,32 +68,13 @@ module liquid_staking::liquid_staking {
             LiquidStakingInfo {
                 id: object::new(ctx),
                 lst_supply: balance::create_supply(LST<P> {}),
-                fee_config,
+                fee_config: cell::new(fee_config),
                 fees: balance::zero(),
                 accrued_spread_fees: 0,
                 storage: storage::new(ctx),
                 extra_fields: bag::new(ctx)
             }
         )
-    }
-
-    // probably should be entry
-    public fun create_fee_config(
-        sui_mint_fee_bps: u64,
-        staked_sui_mint_fee_bps: u64,
-        redeem_fee_bps: u64,
-        staked_sui_redeem_fee_bps: u64,
-        spread_fee_bps: u64,
-    ): FeeConfig {
-        // TODO: validate fee config. we probably don't want a zero fee config, ever.
-
-        FeeConfig {
-            sui_mint_fee_bps,
-            staked_sui_mint_fee_bps,
-            redeem_fee_bps,
-            staked_sui_redeem_fee_bps,
-            spread_fee_bps
-        }
     }
 
     // User operations
@@ -163,7 +138,7 @@ module liquid_staking::liquid_staking {
     ) {
         self.refresh(system_state, ctx);
 
-        let sui = self.storage.split_from_sui_pool(sui_amount);
+        let sui = self.storage.split_up_to_n_sui_from_sui_pool(sui_amount);
         let staked_sui = system_state.request_add_stake_non_entry(
             coin::from_balance(sui, ctx),
             validator_address,
@@ -233,7 +208,8 @@ module liquid_staking::liquid_staking {
         _admin_cap: &AdminCap<P>,
         fee_config: FeeConfig,
     ) {
-        self.fee_config = fee_config;
+        let old_fee_config = self.fee_config.set(fee_config);
+        old_fee_config.destroy();
     }
 
     // returns true if the object was refreshed
@@ -252,7 +228,7 @@ module liquid_staking::liquid_staking {
                 // the spread fee in 1 epoch is 1 * 0.01 / 365 = 0.0000274 SUI => 27400 MIST
                 let spread_fee = 
                     ((new_total_supply - old_total_supply) as u128) 
-                    * (self.fee_config.spread_fee_bps as u128) 
+                    * (self.fee_config.get().spread_fee_bps() as u128) 
                     / (10_000 as u128);
 
                 self.accrued_spread_fees = self.accrued_spread_fees + (spread_fee as u64);
@@ -299,7 +275,7 @@ module liquid_staking::liquid_staking {
     }
 
     fun calculate_redeem_fee<P>(self: &LiquidStakingInfo<P>, sui_amount: u64): u64 {
-        let min_fee = if (self.fee_config.redeem_fee_bps == 0) {
+        let min_fee = if (self.fee_config.get().redeem_fee_bps() == 0) {
             0
         } else {
             1
@@ -307,7 +283,7 @@ module liquid_staking::liquid_staking {
 
         max(
             ((sui_amount as u128) 
-                * (self.fee_config.redeem_fee_bps as u128) 
+                * (self.fee_config.get().redeem_fee_bps() as u128) 
                 / 10_000
             ) as u64,
             min_fee
@@ -315,7 +291,7 @@ module liquid_staking::liquid_staking {
     }
 
     fun calculate_mint_fee<P>(self: &LiquidStakingInfo<P>, sui_amount: u64): u64 {
-        let min_fee = if (self.fee_config.sui_mint_fee_bps == 0) {
+        let min_fee = if (self.fee_config.get().sui_mint_fee_bps() == 0) {
             0
         } else {
             1
@@ -323,7 +299,7 @@ module liquid_staking::liquid_staking {
 
         max(
             ((sui_amount as u128) 
-                * (self.fee_config.sui_mint_fee_bps as u128) 
+                * (self.fee_config.get().sui_mint_fee_bps() as u128) 
                 / 10_000
             ) as u64,
             min_fee

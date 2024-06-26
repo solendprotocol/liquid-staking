@@ -3,7 +3,8 @@ module liquid_staking::registry {
     use std::type_name::{Self, TypeName};
     use sui::dynamic_field::{Self};
 
-    use liquid_staking::liquid_staking::{Self, LiquidStakingInfo, AdminCap, FeeConfig};
+    use liquid_staking::liquid_staking::{Self, LiquidStakingInfo, AdminCap};
+    use liquid_staking::fees::{Self, FeeConfig};
 
     // === Errors ===
     const EIncorrectVersion: u64 = 1;
@@ -70,13 +71,13 @@ module liquid_staking::registry {
 
         let (admin_cap_1, liquid_staking_info_1) = create_lst<LST_1>(
             &mut registry, 
-            liquid_staking::create_fee_config(0,0,0,0,0),
+            fees::new_builder(scenario.ctx()).to_fee_config(),
             test_scenario::ctx(&mut scenario)
         );
         
         let (admin_cap_2, liquid_staking_info_2) = create_lst<LST_2>(
             &mut registry, 
-            liquid_staking::create_fee_config(0,0,0,0,0),
+            fees::new_builder(scenario.ctx()).to_fee_config(),
             test_scenario::ctx(&mut scenario)
         );
 
@@ -103,13 +104,13 @@ module liquid_staking::registry {
         let mut registry = test_scenario::take_shared<Registry>(&scenario);
         let (admin_cap_1, liquid_staking_info_1) = create_lst<LST_1>(
             &mut registry, 
-            liquid_staking::create_fee_config(0,0,0,0,0),
+            fees::new_builder(scenario.ctx()).to_fee_config(),
             scenario.ctx()
         );
         
         let (admin_cap_2, liquid_staking_info_2) = create_lst<LST_1>(
             &mut registry, 
-            liquid_staking::create_fee_config(0,0,0,0,0),
+            fees::new_builder(scenario.ctx()).to_fee_config(),
             test_scenario::ctx(&mut scenario)
         );
 
