@@ -6,8 +6,7 @@ module liquid_staking::liquid_staking_tests {
     use sui_system::sui_system::SuiSystemState;
     use sui::coin::{Self, Coin};
     use sui::sui::SUI;
-    use liquid_staking::liquid_staking::{Self, LiquidStakingInfo, LST};
-    use liquid_staking::registry::{Self};
+    use liquid_staking::liquid_staking::{Self, create_lst, LiquidStakingInfo};
     use liquid_staking::fees::{Self};
     use sui_system::governance_test_utils::{
         // Self,
@@ -57,13 +56,12 @@ module liquid_staking::liquid_staking_tests {
         let mut system_state = scenario.take_shared<SuiSystemState>();
         let sui = coin::mint_for_testing<SUI>(100 * MIST_PER_SUI, scenario.ctx());
 
-        let mut registry = registry::create_for_testing(scenario.ctx());
-
-        let (admin_cap, mut lst_info) = registry.create_lst<TEST>(
+        let (admin_cap, mut lst_info) = create_lst<TEST>(
             fees::new_builder(scenario.ctx())
                 .set_sui_mint_fee_bps(100)
                 .set_redeem_fee_bps(100)
                 .to_fee_config(),
+            coin::create_treasury_cap_for_testing(scenario.ctx()),
             scenario.ctx()
         );
 
@@ -98,7 +96,6 @@ module liquid_staking::liquid_staking_tests {
 
         sui::test_utils::destroy(admin_cap);
         sui::test_utils::destroy(lst_info);
-        sui::test_utils::destroy(registry);
 
         scenario.end();
     }
@@ -114,13 +111,12 @@ module liquid_staking::liquid_staking_tests {
         let mut system_state = scenario.take_shared<SuiSystemState>();
         let sui = coin::mint_for_testing<SUI>(100 * MIST_PER_SUI, scenario.ctx());
 
-        let mut registry = registry::create_for_testing(scenario.ctx());
-
-        let (admin_cap, mut lst_info) = registry.create_lst<TEST>(
+        let (admin_cap, mut lst_info) = create_lst<TEST>(
             fees::new_builder(scenario.ctx())
                 .set_sui_mint_fee_bps(100)
                 .set_redeem_fee_bps(100)
                 .to_fee_config(),
+            coin::create_treasury_cap_for_testing(scenario.ctx()),
             scenario.ctx()
         );
 
@@ -215,7 +211,6 @@ module liquid_staking::liquid_staking_tests {
 
         sui::test_utils::destroy(admin_cap);
         sui::test_utils::destroy(lst_info);
-        sui::test_utils::destroy(registry);
 
         scenario.end();
     }
@@ -230,12 +225,11 @@ module liquid_staking::liquid_staking_tests {
 
         let mut system_state = scenario.take_shared<SuiSystemState>();
 
-        let mut registry = registry::create_for_testing(scenario.ctx());
-
-        let (admin_cap, mut lst_info) = registry.create_lst<TEST>(
+        let (admin_cap, mut lst_info) = create_lst<TEST>(
             fees::new_builder(scenario.ctx())
                 .set_spread_fee_bps(1000)
                 .to_fee_config(),
+            coin::create_treasury_cap_for_testing(scenario.ctx()),
             scenario.ctx()
         );
 
@@ -292,7 +286,6 @@ module liquid_staking::liquid_staking_tests {
 
         sui::test_utils::destroy(admin_cap);
         sui::test_utils::destroy(lst_info);
-        sui::test_utils::destroy(registry);
 
         scenario.end();
     }

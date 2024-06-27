@@ -1,6 +1,6 @@
 /// Module: liquid_staking
 module liquid_staking::liquid_staking {
-    use sui::balance::{Self, Balance, Supply};
+    use sui::balance::{Self, Balance};
     use sui_system::sui_system::{SuiSystemState};
     use sui::coin::{Self, Coin};
     use sui::sui::SUI;
@@ -9,13 +9,15 @@ module liquid_staking::liquid_staking {
     use sui::math::max;
     use liquid_staking::fees::{FeeConfig};
     use liquid_staking::cell::{Self, Cell};
+    use sui::coin::{TreasuryCap};
 
     /* Errors */
     const ENotEnoughSuiUnstaked: u64 = 0;
+    const EInvalidTreasuryCap: u64 = 1;
 
     public struct LiquidStakingInfo<phantom P> has key, store {
         id: UID,
-        lst_supply: Supply<LST<P>>,
+        lst_treasury_cap: TreasuryCap<P>,
         fee_config: Cell<FeeConfig>,
         fees: Balance<SUI>,
         accrued_spread_fees: u64,
@@ -27,9 +29,6 @@ module liquid_staking::liquid_staking {
         id: UID
     }
 
-    public struct LST<phantom P> has drop, copy {}
-
-
     /* Public View Functions */
 
     // returns total sui managed by the LST. Note that this value might be out of date if the 
@@ -39,7 +38,7 @@ module liquid_staking::liquid_staking {
     }
 
     public fun total_lst_supply<P>(self: &LiquidStakingInfo<P>): u64 {
-        self.lst_supply.supply_value()
+        self.lst_treasury_cap.total_supply()
     }
 
     #[test_only]
@@ -59,15 +58,18 @@ module liquid_staking::liquid_staking {
 
     /* Public Mutative Functions */
 
-    public(package) fun create_lst<P: drop>(
+    public fun create_lst<P: drop>(
         fee_config: FeeConfig, 
+        lst_treasury_cap: TreasuryCap<P>,
         ctx: &mut TxContext
     ): (AdminCap<P>, LiquidStakingInfo<P>) {
+        assert!(lst_treasury_cap.total_supply() == 0, EInvalidTreasuryCap);
+
         (
             AdminCap<P> { id: object::new(ctx) },
             LiquidStakingInfo {
                 id: object::new(ctx),
-                lst_supply: balance::create_supply(LST<P> {}),
+                lst_treasury_cap: lst_treasury_cap,
                 fee_config: cell::new(fee_config),
                 fees: balance::zero(),
                 accrued_spread_fees: 0,
@@ -83,7 +85,7 @@ module liquid_staking::liquid_staking {
         system_state: &mut SuiSystemState, 
         sui: Coin<SUI>, 
         ctx: &mut TxContext
-    ): Coin<LST<P>> {
+    ): Coin<P> {
         self.refresh(system_state, ctx);
 
         let mut sui_balance = sui.into_balance();
@@ -97,14 +99,12 @@ module liquid_staking::liquid_staking {
 
         self.storage.join_to_sui_pool(sui_balance);
 
-        let lst = balance::increase_supply(&mut self.lst_supply, mint_amount);
-
-        coin::from_balance(lst, ctx)
+        self.lst_treasury_cap.mint(mint_amount, ctx)
     }
 
     public fun redeem<P: drop>(
         self: &mut LiquidStakingInfo<P>,
-        lst: Coin<LST<P>>,
+        lst: Coin<P>,
         system_state: &mut SuiSystemState, 
         ctx: &mut TxContext
     ): Coin<SUI> {
@@ -121,7 +121,7 @@ module liquid_staking::liquid_staking {
         let redeem_fee = sui.split(redeem_fee_amount as u64);
         self.fees.join(redeem_fee);
 
-        self.lst_supply.decrease_supply(lst.into_balance());
+        self.lst_treasury_cap.burn(lst);
 
         coin::from_balance(sui, ctx)
     }
@@ -246,7 +246,7 @@ module liquid_staking::liquid_staking {
         sui_amount: u64
     ): u64 {
         let total_sui_supply = self.total_sui_supply();
-        let total_lst_supply = balance::supply_value(&self.lst_supply);
+        let total_lst_supply = self.total_lst_supply();
 
         if (total_sui_supply == 0) {
             return sui_amount
@@ -264,7 +264,7 @@ module liquid_staking::liquid_staking {
         lst_amount: u64
     ): u64 {
         let total_sui_supply = self.total_sui_supply();
-        let total_lst_supply = balance::supply_value(&self.lst_supply);
+        let total_lst_supply = self.total_lst_supply();
 
         // div by zero case should never happen
         let sui_amount = (total_sui_supply as u128)
