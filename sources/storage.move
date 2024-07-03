@@ -343,9 +343,6 @@ module liquid_staking::storage {
         self.refresh_validator_info(validator_index);
     }
 
-
-
-
     fun split_from_active_stake(
         self: &mut Storage, 
         system_state: &mut SuiSystemState,
