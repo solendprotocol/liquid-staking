@@ -1,5 +1,5 @@
 module liquid_staking::storage {
-    use sui_system::staking_pool::{StakedSui, FungibleStake, PoolTokenExchangeRate};
+    use sui_system::staking_pool::{StakedSui, FungibleStakedSui, PoolTokenExchangeRate};
     use sui::address;
     use sui::sui::SUI;
     use sui::balance::{Self, Balance};
@@ -25,7 +25,7 @@ module liquid_staking::storage {
     public struct ValidatorInfo has store {
         staking_pool_id: ID,
 
-        active_stake: Option<FungibleStake>,
+        active_stake: Option<FungibleStakedSui>,
         inactive_stake: Option<StakedSui>,
 
         exchange_rate: PoolTokenExchangeRate,
@@ -74,7 +74,7 @@ module liquid_staking::storage {
         &self.inactive_stake
     }
 
-    public(package) fun active_stake(self: &ValidatorInfo): &Option<FungibleStake> {
+    public(package) fun active_stake(self: &ValidatorInfo): &Option<FungibleStakedSui> {
         &self.active_stake
     }
 
@@ -148,7 +148,7 @@ module liquid_staking::storage {
         self.split_from_sui_pool(sui_amount_out)
     }
 
-    // TODO: handle FungibleStake min size constraints
+    // TODO: handle FungibleStakedSui min size constraints
     public(package) fun split_up_to_n_sui_from_active_stake(
         self: &mut Storage, 
         system_state: &mut SuiSystemState,
@@ -166,10 +166,10 @@ module liquid_staking::storage {
             return balance::zero()
         };
 
-        let fungible_stake_amount = validator_info.active_stake.borrow().fungible_stake_value();
+        let fungible_staked_sui_amount = validator_info.active_stake.borrow().value();
         let total_sui_amount = get_sui_amount(
             &validator_info.exchange_rate, 
-            fungible_stake_amount 
+            fungible_staked_sui_amount 
         );
 
         let unstaked_sui = if (total_sui_amount <= max_sui_amount_out) {
@@ -178,7 +178,7 @@ module liquid_staking::storage {
         else {
             // FIXME: doesn't work if split amount is <= 1 SUI, or the remainder is <= 1 SUI
             let split_amount = (max_sui_amount_out as u128) 
-                * (fungible_stake_amount as u128) 
+                * (fungible_staked_sui_amount as u128) 
                 / (total_sui_amount as u128);
             self.split_from_active_stake(system_state, validator_index, split_amount as u64, ctx)
         };
@@ -296,7 +296,7 @@ module liquid_staking::storage {
             let active_stake = validator_info.active_stake.borrow();
             let active_sui_amount = get_sui_amount(
                 &validator_info.exchange_rate, 
-                active_stake.fungible_stake_value()
+                active_stake.value()
             );
 
             total_sui_amount = total_sui_amount + active_sui_amount;
@@ -323,13 +323,13 @@ module liquid_staking::storage {
         let validator_info = &mut self.validator_infos[validator_index];
 
         if (stake.stake_activation_epoch() <= ctx.epoch()) {
-            let fungible_stake = system_state.convert_to_fungible_stake(stake, ctx);
+            let fungible_staked_sui = system_state.convert_to_fungible_staked_sui(stake, ctx);
 
             if (validator_info.active_stake.is_some()) {
-                validator_info.active_stake.borrow_mut().join_fungible_stake(fungible_stake);
+                validator_info.active_stake.borrow_mut().join_fungible_staked_sui(fungible_staked_sui);
 
             } else {
-                validator_info.active_stake.fill(fungible_stake);
+                validator_info.active_stake.fill(fungible_staked_sui);
             };
         }
         else {
@@ -347,18 +347,18 @@ module liquid_staking::storage {
         self: &mut Storage, 
         system_state: &mut SuiSystemState,
         validator_index: u64, 
-        fungible_stake_amount: u64,
+        fungible_staked_sui_amount: u64,
         ctx: &mut TxContext
     ): Balance<SUI> {
         let validator_info = &mut self.validator_infos[validator_index];
 
         let stake = validator_info.active_stake
             .borrow_mut()
-            .split_fungible_stake(fungible_stake_amount, ctx);
+            .split_fungible_staked_sui(fungible_staked_sui_amount, ctx);
 
         self.refresh_validator_info(validator_index);
 
-        system_state.redeem_fungible_stake(stake, ctx)
+        system_state.redeem_fungible_staked_sui(stake, ctx)
     }
 
     fun take_active_stake(
@@ -368,11 +368,11 @@ module liquid_staking::storage {
         ctx: &mut TxContext
     ): Balance<SUI> {
         let validator_info = &mut self.validator_infos[validator_index];
-        let fungible_stake = validator_info.active_stake.extract();
+        let fungible_staked_sui = validator_info.active_stake.extract();
 
         self.refresh_validator_info(validator_index);
 
-        system_state.redeem_fungible_stake(fungible_stake, ctx)
+        system_state.redeem_fungible_staked_sui(fungible_staked_sui, ctx)
     }
 
     fun split_from_inactive_stake(
@@ -694,7 +694,7 @@ module liquid_staking::storage {
         assert!(storage.total_sui_supply() == 100 * MIST_PER_SUI, 0);
 
         assert!(
-            storage.validators()[0].active_stake.borrow().fungible_stake_value() == 50 * MIST_PER_SUI, 
+            storage.validators()[0].active_stake.borrow().value() == 50 * MIST_PER_SUI, 
             0
         );
 

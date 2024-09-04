@@ -27,16 +27,6 @@ module liquid_staking::liquid_staking_tests {
     const MIST_PER_SUI: u64 = 1_000_000_000;
 
     fun setup_sui_system(scenario: &mut Scenario, stakes: vector<u64>) {
-        use sui_system::governance_test_utils::{
-            create_validators_with_stakes,
-            create_sui_system_state_for_testing,
-            // stake_with,
-            // remove_validator,
-            // remove_validator_candidate,
-            // total_sui_balance,
-            // unstake,
-        };
-
         let validators = create_validators_with_stakes(stakes, scenario.ctx());
         create_sui_system_state_for_testing(validators, 0, 0, scenario.ctx());
 
@@ -181,7 +171,7 @@ module liquid_staking::liquid_staking_tests {
             0
         );
         assert!(
-            lst_info.storage().validators()[1].active_stake().borrow().fungible_stake_value() == 10 * MIST_PER_SUI, 
+            lst_info.storage().validators()[1].active_stake().borrow().value() == 10 * MIST_PER_SUI, 
             0
         );
 
@@ -219,7 +209,7 @@ module liquid_staking::liquid_staking_tests {
     fun test_spread_fee() {
         let mut scenario = test_scenario::begin(@0x0);
 
-        setup_sui_system(&mut scenario, vector[100, 100]);
+        setup_sui_system(&mut scenario, vector[90, 90]);
 
         scenario.next_tx(@0x0);
 
@@ -227,7 +217,8 @@ module liquid_staking::liquid_staking_tests {
 
         let (admin_cap, mut lst_info) = create_lst<TEST>(
             fees::new_builder(scenario.ctx())
-                .set_spread_fee_bps(1000)
+                .set_spread_fee_bps(5000) // 50%
+                .set_sui_mint_fee_bps(1000) // 10%
                 .to_fee_config(),
             coin::create_treasury_cap_for_testing(scenario.ctx()),
             scenario.ctx()
@@ -236,20 +227,21 @@ module liquid_staking::liquid_staking_tests {
         let sui = coin::mint_for_testing<SUI>(100 * MIST_PER_SUI, scenario.ctx());
         let lst = lst_info.mint(&mut system_state, sui, scenario.ctx());
 
-        assert!(lst.value() == 100 * MIST_PER_SUI, 0);
+        assert!(lst.value() == 90 * MIST_PER_SUI, 0);
 
+        std::debug::print(&lst_info);
         lst_info.increase_validator_stake(
             &admin_cap, 
             &mut system_state, 
             @0x0,
-            50 * MIST_PER_SUI, 
+            45 * MIST_PER_SUI, 
             scenario.ctx()
         );
         lst_info.increase_validator_stake(
             &admin_cap, 
             &mut system_state, 
             @0x1,
-            50 * MIST_PER_SUI, 
+            45 * MIST_PER_SUI, 
             scenario.ctx()
         );
 
@@ -258,8 +250,8 @@ module liquid_staking::liquid_staking_tests {
         scenario.next_tx(@0x0);
         advance_epoch_with_reward_amounts(0, 0, &mut scenario);
 
-        // got 100 SUI of rewards, 10 of that should be spread fee
-        advance_epoch_with_reward_amounts(0, 300, &mut scenario);
+        // got 90 SUI of rewards, 45 of that should be spread fee
+        advance_epoch_with_reward_amounts(0, 270, &mut scenario);
 
         let mut system_state = scenario.take_shared<SuiSystemState>();
         let sui = lst_info.redeem(
@@ -268,17 +260,15 @@ module liquid_staking::liquid_staking_tests {
             scenario.ctx()
         );
 
-        assert!(sui.value() == 190 * MIST_PER_SUI, 0);
-        assert!(lst_info.storage().total_sui_supply() == 10 * MIST_PER_SUI, 0);
+        assert!(sui.value() == 135 * MIST_PER_SUI, 0);
+        assert!(lst_info.storage().total_sui_supply() == 45 * MIST_PER_SUI, 0);
         assert!(lst_info.total_sui_supply() == 0, 0);
-        assert!(lst_info.accrued_spread_fees() == 10 * MIST_PER_SUI, 0);
+        assert!(lst_info.accrued_spread_fees() == 45 * MIST_PER_SUI, 0);
 
         let fees = lst_info.collect_fees(&mut system_state, &admin_cap, scenario.ctx());
-        assert!(fees.value() == 10 * MIST_PER_SUI, 0);
+        assert!(fees.value() == 55 * MIST_PER_SUI, 0); // 45 in spread, 10 in mint
         assert!(lst_info.accrued_spread_fees() == 0, 0);
         assert!(lst_info.storage().total_sui_supply() == 0, 0);
-
-        std::debug::print(&lst_info);
 
         sui::test_utils::destroy(sui);
         sui::test_utils::destroy(fees);

@@ -6,7 +6,6 @@ module liquid_staking::liquid_staking {
     use sui::sui::SUI;
     use liquid_staking::storage::{Self, Storage};
     use sui::bag::{Self, Bag};
-    use sui::math::max;
     use liquid_staking::fees::{FeeConfig};
     use liquid_staking::cell::{Self, Cell};
     use sui::coin::{TreasuryCap};
@@ -91,7 +90,7 @@ module liquid_staking::liquid_staking {
         let mut sui_balance = sui.into_balance();
 
         // deduct fees
-        let mint_fee_amount = self.calculate_mint_fee(sui_balance.value());
+        let mint_fee_amount = self.fee_config.get().calculate_mint_fee(sui_balance.value());
         let mint_fee = sui_balance.split(mint_fee_amount as u64);
         self.fees.join(mint_fee);
         
@@ -117,7 +116,7 @@ module liquid_staking::liquid_staking {
         // TODO: add minimum balance check as well. don't wanna rug the user!
 
         // deduct fee
-        let redeem_fee_amount = self.calculate_redeem_fee(sui.value());
+        let redeem_fee_amount = self.fee_config.get().calculate_redeem_fee(sui.value());
         let redeem_fee = sui.split(redeem_fee_amount as u64);
         self.fees.join(redeem_fee);
 
@@ -226,6 +225,7 @@ module liquid_staking::liquid_staking {
                 // don't think we need to keep track of this in fixed point.
                 // If there's 1 SUI staked, and the yearly rewards is 1%, then 
                 // the spread fee in 1 epoch is 1 * 0.01 / 365 = 0.0000274 SUI => 27400 MIST
+                // ie very unlikely to round spread fees to 0.
                 let spread_fee = 
                     ((new_total_supply - old_total_supply) as u128) 
                     * (self.fee_config.get().spread_fee_bps() as u128) 
@@ -272,37 +272,5 @@ module liquid_staking::liquid_staking {
             / (total_lst_supply as u128);
 
         sui_amount as u64
-    }
-
-    fun calculate_redeem_fee<P>(self: &LiquidStakingInfo<P>, sui_amount: u64): u64 {
-        let min_fee = if (self.fee_config.get().redeem_fee_bps() == 0) {
-            0
-        } else {
-            1
-        };
-
-        max(
-            ((sui_amount as u128) 
-                * (self.fee_config.get().redeem_fee_bps() as u128) 
-                / 10_000
-            ) as u64,
-            min_fee
-        )
-    }
-
-    fun calculate_mint_fee<P>(self: &LiquidStakingInfo<P>, sui_amount: u64): u64 {
-        let min_fee = if (self.fee_config.get().sui_mint_fee_bps() == 0) {
-            0
-        } else {
-            1
-        };
-
-        max(
-            ((sui_amount as u128) 
-                * (self.fee_config.get().sui_mint_fee_bps() as u128) 
-                / 10_000
-            ) as u64,
-            min_fee
-        )
     }
 }
