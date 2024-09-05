@@ -91,14 +91,14 @@ module liquid_staking::liquid_staking {
 
         // deduct fees
         let mint_fee_amount = self.fee_config.get().calculate_mint_fee(sui_balance.value());
-        let mint_fee = sui_balance.split(mint_fee_amount as u64);
-        self.fees.join(mint_fee);
+        self.fees.join(sui_balance.split(mint_fee_amount));
         
-        let mint_amount = self.sui_amount_to_lst_amount(sui_balance.value());
-
+        let lst_mint_amount = self.sui_amount_to_lst_amount(sui_balance.value());
         self.storage.join_to_sui_pool(sui_balance);
 
-        self.lst_treasury_cap.mint(mint_amount, ctx)
+        // TODO: invariant check
+        self.lst_treasury_cap.mint(lst_mint_amount, ctx)
+
     }
 
     public fun redeem<P: drop>(
@@ -109,19 +109,16 @@ module liquid_staking::liquid_staking {
     ): Coin<SUI> {
         self.refresh(system_state, ctx);
 
-        let max_sui_amount_out = self.lst_amount_to_sui_amount(lst.value());
-
-        let mut sui = self.storage.split_up_to_n_sui(system_state, max_sui_amount_out, ctx);
-        assert!(sui.value() <= max_sui_amount_out, ENotEnoughSuiUnstaked);
-        // TODO: add minimum balance check as well. don't wanna rug the user!
+        let sui_amount_out = self.lst_amount_to_sui_amount(lst.value());
+        let mut sui = self.storage.split_up_to_n_sui(system_state, sui_amount_out, ctx);
 
         // deduct fee
         let redeem_fee_amount = self.fee_config.get().calculate_redeem_fee(sui.value());
-        let redeem_fee = sui.split(redeem_fee_amount as u64);
-        self.fees.join(redeem_fee);
+        self.fees.join(sui.split(redeem_fee_amount as u64));
 
         self.lst_treasury_cap.burn(lst);
 
+        // TODO: invariant check
         coin::from_balance(sui, ctx)
     }
 
@@ -129,7 +126,7 @@ module liquid_staking::liquid_staking {
     // Admin Functions
     public fun increase_validator_stake<P>(
         self: &mut LiquidStakingInfo<P>,
-        _admin_cap: &AdminCap<P>,
+        _: &AdminCap<P>,
         system_state: &mut SuiSystemState,
         validator_address: address,
         sui_amount: u64,
@@ -145,44 +142,24 @@ module liquid_staking::liquid_staking {
         );
 
         self.storage.join_stake(system_state, staked_sui, ctx);
-
-        // TODO: invariant check. total_sui_supply should not change before and after
-        // there can be some precision issues though so i think sometimes the amount of sui can decrease by 
-        // 1 MIST.
     }
     
-    // returns actual sui amount unstaked
     public fun decrease_validator_stake<P>(
         self: &mut LiquidStakingInfo<P>,
-        _admin_cap: &AdminCap<P>,
+        _: &AdminCap<P>,
         system_state: &mut SuiSystemState,
         validator_index: u64,
         max_sui_amount: u64,
         ctx: &mut TxContext
-    ): u64 {
+    ) {
         self.refresh(system_state, ctx);
 
-        let sui_from_inactive_stake = self.storage.split_up_to_n_sui_from_inactive_stake(
+        self.storage.unstake_approx_n_sui_from_validator(
             system_state,
             validator_index,
             max_sui_amount,
             ctx
         );
-        let sui_from_active_stake = self.storage.split_up_to_n_sui_from_active_stake(
-            system_state,
-            validator_index,
-            max_sui_amount - sui_from_inactive_stake.value(),
-            ctx
-        );
-
-        let total_sui_unstaked = sui_from_inactive_stake.value() + sui_from_active_stake.value();
-        self.storage.join_to_sui_pool(sui_from_inactive_stake);
-        self.storage.join_to_sui_pool(sui_from_active_stake);
-
-        // TODO: invariant check. total_sui_supply should not change before and after
-        // there can be some precision issues though so i think sometimes the amount of sui can decrease by 
-        // 1 or 2 MIST.
-        total_sui_unstaked
     }
 
     public fun collect_fees<P>(
