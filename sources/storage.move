@@ -40,7 +40,7 @@ module liquid_staking::storage {
             sui_pool: balance::zero(),
             validator_infos: vector::empty(),
             total_sui_supply: 0,
-            last_refresh_epoch: 0,
+            last_refresh_epoch: ctx.epoch(),
             extra_fields: bag::new(ctx)
         }
     }
@@ -640,7 +640,7 @@ module liquid_staking::storage {
 
         storage.join_stake(&mut system_state, staked_sui_1, scenario.ctx());
 
-        assert!(storage.last_refresh_epoch == 0, 0);
+        assert!(storage.last_refresh_epoch == scenario.ctx().epoch(), 0);
         assert!(storage.total_sui_supply() == 50 * MIST_PER_SUI, 0);
         assert!(storage.validators().length() == 1, 0);
         assert!(storage.validators()[0].total_sui_amount == 50 * MIST_PER_SUI, 0);
@@ -651,7 +651,7 @@ module liquid_staking::storage {
 
         storage.join_stake(&mut system_state, staked_sui_2, scenario.ctx());
 
-        assert!(storage.last_refresh_epoch == 0, 0);
+        assert!(storage.last_refresh_epoch == scenario.ctx().epoch(), 0);
         assert!(storage.total_sui_supply() == 100 * MIST_PER_SUI, 0);
         assert!(storage.validators().length() == 1, 0);
         assert!(storage.validators()[0].total_sui_amount == 100 * MIST_PER_SUI, 0);

@@ -9,10 +9,13 @@ module liquid_staking::liquid_staking {
     use liquid_staking::fees::{FeeConfig};
     use liquid_staking::cell::{Self, Cell};
     use sui::coin::{TreasuryCap};
+    use liquid_staking::version::{Self, Version};
 
     /* Errors */
-    const ENotEnoughSuiUnstaked: u64 = 0;
-    const EInvalidTreasuryCap: u64 = 1;
+    const EInvalidTreasuryCap: u64 = 0;
+
+    /* Constants */
+    const CURRENT_VERSION: u16 = 1;
 
     public struct LiquidStakingInfo<phantom P> has key, store {
         id: UID,
@@ -21,6 +24,7 @@ module liquid_staking::liquid_staking {
         fees: Balance<SUI>,
         accrued_spread_fees: u64,
         storage: Storage,
+        version: Version,
         extra_fields: Bag
     }
 
@@ -73,6 +77,7 @@ module liquid_staking::liquid_staking {
                 fees: balance::zero(),
                 accrued_spread_fees: 0,
                 storage: storage::new(ctx),
+                version: version::new(CURRENT_VERSION),
                 extra_fields: bag::new(ctx)
             }
         )
@@ -184,6 +189,8 @@ module liquid_staking::liquid_staking {
         _admin_cap: &AdminCap<P>,
         fee_config: FeeConfig,
     ) {
+        self.version.assert_version_and_upgrade(CURRENT_VERSION);
+
         let old_fee_config = self.fee_config.set(fee_config);
         old_fee_config.destroy();
     }
@@ -194,6 +201,8 @@ module liquid_staking::liquid_staking {
         system_state: &mut SuiSystemState, 
         ctx: &mut TxContext
     ): bool {
+        self.version.assert_version_and_upgrade(CURRENT_VERSION);
+
         let old_total_supply = self.storage.total_sui_supply();
 
         if (self.storage.refresh(system_state, ctx)) { // epoch rolled over
