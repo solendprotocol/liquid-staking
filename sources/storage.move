@@ -62,6 +62,10 @@ module liquid_staking::storage {
         &self.active_stake
     }
 
+    public(package) fun staking_pool_id(self: &ValidatorInfo): ID {
+        self.staking_pool_id
+    }
+
     /* Refresh Functions */
     /// update the total sui supply value when the epoch changes
     /// returns true if the storage was updated
@@ -200,11 +204,13 @@ module liquid_staking::storage {
         validator_index: u64, 
         unstake_sui_amount: u64,
         ctx: &mut TxContext
-    ) {
-        let amount = self.unstake_approx_n_sui_from_inactive_stake(system_state, validator_index, unstake_sui_amount, ctx);
+    ): u64 {
+        let mut amount = self.unstake_approx_n_sui_from_inactive_stake(system_state, validator_index, unstake_sui_amount, ctx);
         if (unstake_sui_amount > amount) {
-            self.unstake_approx_n_sui_from_active_stake(system_state, validator_index, unstake_sui_amount - amount, ctx);
-        }
+            amount = amount + self.unstake_approx_n_sui_from_active_stake(system_state, validator_index, unstake_sui_amount - amount, ctx);
+        };
+
+        amount
     }
 
     // This function tries to unstake approximately n SUI. 
@@ -1399,13 +1405,14 @@ module liquid_staking::storage {
         assert!(storage.total_sui_supply() == 300 * MIST_PER_SUI, 0);
         assert!(storage.validators()[0].total_sui_amount == 300 * MIST_PER_SUI, 0);
 
-        storage.unstake_approx_n_sui_from_validator(
+        let amount = storage.unstake_approx_n_sui_from_validator(
             &mut system_state,
             0,
             100 * MIST_PER_SUI,
             scenario.ctx()
         );
 
+        assert!(amount == 100 * MIST_PER_SUI, 0);
         assert!(storage.total_sui_supply() == 300 * MIST_PER_SUI, 0);
         assert!(storage.sui_pool.value() == 100 * MIST_PER_SUI, 0);
         assert!(storage.validators()[0].total_sui_amount == 200 * MIST_PER_SUI, 0);
@@ -1444,13 +1451,14 @@ module liquid_staking::storage {
         assert!(storage.total_sui_supply() == 300 * MIST_PER_SUI, 0);
         assert!(storage.validators()[0].total_sui_amount == 300 * MIST_PER_SUI, 0);
 
-        storage.unstake_approx_n_sui_from_validator(
+        let amount = storage.unstake_approx_n_sui_from_validator(
             &mut system_state,
             0,
             300 * MIST_PER_SUI,
             scenario.ctx()
         );
 
+        assert!(amount == 300 * MIST_PER_SUI, 0);
         assert!(storage.total_sui_supply() == 300 * MIST_PER_SUI, 0);
         assert!(storage.sui_pool.value() == 300 * MIST_PER_SUI, 0);
         assert!(storage.validators()[0].total_sui_amount == 0, 0);
@@ -1489,13 +1497,14 @@ module liquid_staking::storage {
         assert!(storage.total_sui_supply() == 300 * MIST_PER_SUI, 0);
         assert!(storage.validators()[0].total_sui_amount == 300 * MIST_PER_SUI, 0);
 
-        storage.unstake_approx_n_sui_from_validator(
+        let amount = storage.unstake_approx_n_sui_from_validator(
             &mut system_state,
             0,
             0,
             scenario.ctx()
         );
 
+        assert!(amount == 0, 0);
         assert!(storage.total_sui_supply() == 300 * MIST_PER_SUI, 0);
         assert!(storage.sui_pool.value() == 0, 0);
         assert!(storage.validators()[0].total_sui_amount == 300 * MIST_PER_SUI, 0);

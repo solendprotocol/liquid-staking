@@ -10,6 +10,7 @@ module liquid_staking::liquid_staking {
     use liquid_staking::cell::{Self, Cell};
     use sui::coin::{TreasuryCap};
     use liquid_staking::version::{Self, Version};
+    use liquid_staking::events::{Self, emit_event};
 
     /* Errors */
     const EInvalidTreasuryCap: u64 = 0;
@@ -30,6 +31,33 @@ module liquid_staking::liquid_staking {
 
     public struct AdminCap<phantom P> has key, store { 
         id: UID
+    }
+
+    /* Events */
+    public struct MintEvent<phantom P> has copy, drop {
+        sui_amount_in: u64,
+        lst_amount_out: u64,
+        fee_amount: u64
+    }
+
+    public struct RedeemEvent<phantom P> has copy, drop {
+        lst_amount_in: u64,
+        sui_amount_out: u64,
+        fee_amount: u64
+    }
+
+    public struct DecreaseValidatorStakeEvent<phantom P> has copy, drop {
+        staking_pool_id: ID,
+        amount: u64
+    }
+
+    public struct IncreaseValidatorStakeEvent<phantom P> has copy, drop {
+        staking_pool_id: ID,
+        amount: u64
+    }
+
+    public struct CollectFeesEvent<phantom P> has copy, drop {
+        amount: u64
     }
 
     /* Public View Functions */
@@ -93,6 +121,7 @@ module liquid_staking::liquid_staking {
         self.refresh(system_state, ctx);
 
         let mut sui_balance = sui.into_balance();
+        let sui_amount_in = sui_balance.value();
 
         // deduct fees
         let mint_fee_amount = self.fee_config.get().calculate_mint_fee(sui_balance.value());
@@ -101,9 +130,14 @@ module liquid_staking::liquid_staking {
         let lst_mint_amount = self.sui_amount_to_lst_amount(sui_balance.value());
         self.storage.join_to_sui_pool(sui_balance);
 
+        emit_event(MintEvent<P> {
+            sui_amount_in,
+            lst_amount_out: lst_mint_amount,
+            fee_amount: mint_fee_amount
+        });
+
         // TODO: invariant check
         self.lst_treasury_cap.mint(lst_mint_amount, ctx)
-
     }
 
     public fun redeem<P: drop>(
@@ -120,6 +154,12 @@ module liquid_staking::liquid_staking {
         // deduct fee
         let redeem_fee_amount = self.fee_config.get().calculate_redeem_fee(sui.value());
         self.fees.join(sui.split(redeem_fee_amount as u64));
+
+        emit_event(RedeemEvent<P> {
+            lst_amount_in: lst.value(),
+            sui_amount_out: sui.value(),
+            fee_amount: redeem_fee_amount
+        });
 
         self.lst_treasury_cap.burn(lst);
 
@@ -146,6 +186,11 @@ module liquid_staking::liquid_staking {
             ctx
         );
 
+        emit_event(IncreaseValidatorStakeEvent<P> {
+            staking_pool_id: staked_sui.pool_id(),
+            amount: staked_sui.staked_sui_amount()
+        });
+
         self.storage.join_stake(system_state, staked_sui, ctx);
     }
     
@@ -159,12 +204,17 @@ module liquid_staking::liquid_staking {
     ) {
         self.refresh(system_state, ctx);
 
-        self.storage.unstake_approx_n_sui_from_validator(
+        let sui_amount = self.storage.unstake_approx_n_sui_from_validator(
             system_state,
             validator_index,
             max_sui_amount,
             ctx
         );
+
+        emit_event(DecreaseValidatorStakeEvent<P> {
+            staking_pool_id: self.storage.validators()[validator_index].staking_pool_id(),
+            amount: sui_amount
+        });
     }
 
     public fun collect_fees<P>(
@@ -180,6 +230,10 @@ module liquid_staking::liquid_staking {
 
         let mut fees = self.fees.withdraw_all();
         fees.join(spread_fees);
+
+        emit_event(CollectFeesEvent<P> {
+            amount: fees.value()
+        });
 
         coin::from_balance(fees, ctx)
     }
