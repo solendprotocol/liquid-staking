@@ -1,8 +1,5 @@
 Note this is not production ready yet. Bunch of things still need to be addressed, like:
-- unstaking doesn't work when StakedSui objects can't be split due to min size constraints
-- fees need to be ceilinged
 - versioning
-- whether or not I want to wait for SIP-31 to pass
 - allowing other LSTs to migrate to this module
 - allow each LST to implement a "custom" redeem function. There will still be a native redeem in liquid_staking.move, but LSTs can implement an alternative as well. The two can have different fees, which can incentivize users to use the custom one if necessary. 
 
