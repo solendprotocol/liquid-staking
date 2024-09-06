@@ -10,10 +10,11 @@ module liquid_staking::liquid_staking {
     use liquid_staking::cell::{Self, Cell};
     use sui::coin::{TreasuryCap};
     use liquid_staking::version::{Self, Version};
-    use liquid_staking::events::{Self, emit_event};
+    use liquid_staking::events::{emit_event};
+    use sui_system::staking_pool::{StakedSui};
 
     /* Errors */
-    const EInvalidTreasuryCap: u64 = 0;
+    const EInvalidLstCreation: u64 = 0;
 
     /* Constants */
     const CURRENT_VERSION: u16 = 1;
@@ -90,11 +91,17 @@ module liquid_staking::liquid_staking {
     /* Public Mutative Functions */
 
     public fun create_lst<P: drop>(
+        system_state: &mut SuiSystemState, 
         fee_config: FeeConfig, 
         lst_treasury_cap: TreasuryCap<P>,
+        mut staked_suis: vector<StakedSui>,
         ctx: &mut TxContext
     ): (AdminCap<P>, LiquidStakingInfo<P>) {
-        assert!(lst_treasury_cap.total_supply() == 0, EInvalidTreasuryCap);
+        assert!(
+            (lst_treasury_cap.total_supply() == 0 && staked_suis.is_empty()) 
+            || (lst_treasury_cap.total_supply() != 0 && !staked_suis.is_empty()),
+            EInvalidLstCreation
+        );
 
         (
             AdminCap<P> { id: object::new(ctx) },
@@ -104,7 +111,21 @@ module liquid_staking::liquid_staking {
                 fee_config: cell::new(fee_config),
                 fees: balance::zero(),
                 accrued_spread_fees: 0,
-                storage: storage::new(ctx),
+                storage: {
+                    let mut storage = storage::new(ctx);
+                    while (!staked_suis.is_empty()) {
+                        let staked_sui = staked_suis.pop_back();
+                        storage.join_stake(
+                            system_state,
+                            staked_sui,
+                            ctx
+                        );
+                    };
+
+                    staked_suis.destroy_empty();
+
+                    storage
+                },
                 version: version::new(CURRENT_VERSION),
                 extra_fields: bag::new(ctx)
             }
