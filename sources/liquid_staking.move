@@ -78,9 +78,12 @@ module liquid_staking::liquid_staking {
         &self.storage
     }
 
-    // does not include spread fees
     public fun fees<P>(self: &LiquidStakingInfo<P>): u64 {
-        self.fees.value()
+        self.fees.value() + self.accrued_spread_fees
+    }
+
+    public fun fee_config<P>(self: &LiquidStakingInfo<P>): &FeeConfig {
+        self.fee_config.get()
     }
 
     #[test_only]
@@ -157,7 +160,6 @@ module liquid_staking::liquid_staking {
             fee_amount: mint_fee_amount
         });
 
-        // TODO: invariant check
         self.lst_treasury_cap.mint(lst_mint_amount, ctx)
     }
 
@@ -184,7 +186,6 @@ module liquid_staking::liquid_staking {
 
         self.lst_treasury_cap.burn(lst);
 
-        // TODO: invariant check
         coin::from_balance(sui, ctx)
     }
 
@@ -197,7 +198,7 @@ module liquid_staking::liquid_staking {
         validator_address: address,
         sui_amount: u64,
         ctx: &mut TxContext
-    ) {
+    ): u64 {
         self.refresh(system_state, ctx);
 
         let sui = self.storage.split_up_to_n_sui_from_sui_pool(sui_amount);
@@ -206,6 +207,7 @@ module liquid_staking::liquid_staking {
             validator_address,
             ctx
         );
+        let staked_sui_amount = staked_sui.staked_sui_amount();
 
         emit_event(IncreaseValidatorStakeEvent<P> {
             staking_pool_id: staked_sui.pool_id(),
@@ -213,6 +215,8 @@ module liquid_staking::liquid_staking {
         });
 
         self.storage.join_stake(system_state, staked_sui, ctx);
+
+        staked_sui_amount
     }
     
     public fun decrease_validator_stake<P>(
@@ -222,7 +226,7 @@ module liquid_staking::liquid_staking {
         validator_index: u64,
         max_sui_amount: u64,
         ctx: &mut TxContext
-    ) {
+    ): u64 {
         self.refresh(system_state, ctx);
 
         let sui_amount = self.storage.unstake_approx_n_sui_from_validator(
@@ -236,6 +240,8 @@ module liquid_staking::liquid_staking {
             staking_pool_id: self.storage.validators()[validator_index].staking_pool_id(),
             amount: sui_amount
         });
+
+        sui_amount
     }
 
     public fun collect_fees<P>(
