@@ -1,28 +1,18 @@
 #[test_only]
 module liquid_staking::liquid_staking_tests {
     // uncomment this line to import the module
-    // use liquid_staking::liquid_staking;
     use sui::address;
     use sui_system::staking_pool::StakedSui;
     use sui::test_scenario::{Self, Scenario};
     use sui_system::sui_system::SuiSystemState;
-    use sui::coin::{Self, Coin};
+    use sui::coin::{Self};
     use sui::sui::SUI;
-    use liquid_staking::liquid_staking::{Self, create_lst, LiquidStakingInfo};
+    use liquid_staking::liquid_staking::{create_lst};
     use liquid_staking::fees::{Self};
     use sui_system::governance_test_utils::{
-        // Self,
-        // add_validator,
-        // add_validator_candidate,
-        // advance_epoch,
         advance_epoch_with_reward_amounts,
         create_validators_with_stakes,
         create_sui_system_state_for_testing,
-        // stake_with,
-        // remove_validator,
-        // remove_validator_candidate,
-        // total_sui_balance,
-        // unstake,
     };
 
     /* Constants */
@@ -30,9 +20,6 @@ module liquid_staking::liquid_staking_tests {
 
     #[test_only]
     public fun stake_with(validator_index: u64, amount: u64, scenario: &mut Scenario): StakedSui {
-        use sui_system::governance_test_utils::{
-            stake_with,
-        };
         scenario.next_tx(@0x0);
 
         let mut system_state = scenario.take_shared<SuiSystemState>();
@@ -476,6 +463,49 @@ module liquid_staking::liquid_staking_tests {
 
         assert!(lst_info.fee_config().spread_fee_bps() == 1000, 0);
         assert!(lst_info.fee_config().sui_mint_fee_bps() == 100, 0);
+
+        test_scenario::return_shared(system_state);
+
+        sui::test_utils::destroy(admin_cap);
+        sui::test_utils::destroy(lst_info);
+
+        scenario.end();
+    }
+
+    #[test]
+    fun test_increase_validator_stake_by_dust_amount() {
+        let mut scenario = test_scenario::begin(@0x0);
+        setup_sui_system(&mut scenario, vector[100, 100]);
+        scenario.next_tx(@0x0);
+
+        let staked_sui = stake_with(0, 100, &mut scenario);
+        let mut treasury_cap = coin::create_treasury_cap_for_testing<TEST>(scenario.ctx());
+        let lst = treasury_cap.mint(100 * MIST_PER_SUI, scenario.ctx());
+
+        let mut system_state = scenario.take_shared<SuiSystemState>();
+
+        let (admin_cap, mut lst_info) = create_lst<TEST>(
+            &mut system_state,
+            fees::new_builder(scenario.ctx())
+                .set_spread_fee_bps(5000) // 50%
+                .set_sui_mint_fee_bps(1000) // 10%
+                .to_fee_config(),
+            treasury_cap,
+            vector[staked_sui],
+            scenario.ctx()
+        );
+
+        let increased_amount = lst_info.increase_validator_stake(
+            &admin_cap,
+            &mut system_state,
+            @0x0,
+            MIST_PER_SUI - 1,
+            scenario.ctx()
+        );
+
+        assert!(increased_amount == 0, 0);
+
+        sui::test_utils::destroy(lst);
 
         test_scenario::return_shared(system_state);
 

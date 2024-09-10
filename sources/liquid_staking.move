@@ -18,6 +18,7 @@ module liquid_staking::liquid_staking {
 
     /* Constants */
     const CURRENT_VERSION: u16 = 1;
+    const MIN_STAKE_AMOUNT: u64 = 1_000_000_000;
 
     public struct LiquidStakingInfo<phantom P> has key, store {
         id: UID,
@@ -73,7 +74,6 @@ module liquid_staking::liquid_staking {
         self.lst_treasury_cap.total_supply()
     }
 
-    #[test_only]
     public fun storage<P>(self: &LiquidStakingInfo<P>): &Storage {
         &self.storage
     }
@@ -201,7 +201,12 @@ module liquid_staking::liquid_staking {
     ): u64 {
         self.refresh(system_state, ctx);
 
+        if (self.storage.sui_pool().value() < MIN_STAKE_AMOUNT) {
+            return 0
+        };
+
         let sui = self.storage.split_up_to_n_sui_from_sui_pool(sui_amount);
+
         let staked_sui = system_state.request_add_stake_non_entry(
             coin::from_balance(sui, ctx),
             validator_address,

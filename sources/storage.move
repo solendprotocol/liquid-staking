@@ -66,6 +66,10 @@ module liquid_staking::storage {
         self.staking_pool_id
     }
 
+    public(package) fun sui_pool(self: &Storage): &Balance<SUI> {
+        &self.sui_pool
+    }
+
     /* Refresh Functions */
     /// update the total sui supply value when the epoch changes
     /// returns true if the storage was updated
