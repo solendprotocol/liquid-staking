@@ -62,6 +62,13 @@ module liquid_staking::liquid_staking {
         amount: u64
     }
 
+    public struct EpochChangedEvent<phantom P> has copy, drop {
+        old_sui_supply: u64,
+        new_sui_supply: u64,
+        lst_supply: u64,
+        spread_fee: u64
+    }
+
     /* Public View Functions */
 
     // returns total sui managed by the LST. Note that this value might be out of date if the 
@@ -289,21 +296,28 @@ module liquid_staking::liquid_staking {
     ): bool {
         self.version.assert_version_and_upgrade(CURRENT_VERSION);
 
-        let old_total_supply = self.storage.total_sui_supply();
+        let old_total_supply = self.total_sui_supply();
 
         if (self.storage.refresh(system_state, ctx)) { // epoch rolled over
-            let new_total_supply = self.storage.total_sui_supply();
+            let new_total_supply = self.total_sui_supply();
             if (new_total_supply > old_total_supply) {
                 // don't think we need to keep track of this in fixed point.
                 // If there's 1 SUI staked, and the yearly rewards is 1%, then 
                 // the spread fee in 1 epoch is 1 * 0.01 / 365 = 0.0000274 SUI => 27400 MIST
                 // ie very unlikely to round spread fees to 0.
                 let spread_fee = 
-                    ((new_total_supply - old_total_supply) as u128) 
+                    (((new_total_supply - old_total_supply) as u128) 
                     * (self.fee_config.get().spread_fee_bps() as u128) 
-                    / (10_000 as u128);
+                    / (10_000 as u128)) as u64;
 
-                self.accrued_spread_fees = self.accrued_spread_fees + (spread_fee as u64);
+                emit_event(EpochChangedEvent<P> {
+                    old_sui_supply: old_total_supply,
+                    new_sui_supply: new_total_supply,
+                    lst_supply: self.total_lst_supply(),
+                    spread_fee
+                });
+
+                self.accrued_spread_fees = self.accrued_spread_fees + spread_fee;
                 return true
             }
         };
