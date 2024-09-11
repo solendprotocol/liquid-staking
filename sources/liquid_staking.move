@@ -180,6 +180,9 @@ module liquid_staking::liquid_staking {
 
         let sui_amount_out = self.lst_amount_to_sui_amount(lst.value());
         let mut sui = self.storage.split_up_to_n_sui(system_state, sui_amount_out, ctx);
+        // TODO: sui.value() can potentially be less than sui_amount_out 
+        // if this is the last amount of sui being withdrawn from the contract. 
+        // should we error if that's the case?
 
         // deduct fee
         let redeem_fee_amount = self.fee_config.get().calculate_redeem_fee(sui.value());
