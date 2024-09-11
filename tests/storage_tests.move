@@ -117,6 +117,57 @@ module liquid_staking::storage_tests {
         scenario.end();
     }
 
+    #[test]
+    fun test_refresh_prune_empty_validator_infos() {
+        let mut scenario = test_scenario::begin(@0x0);
+
+        setup_sui_system(&mut scenario, vector[100, 100]);
+
+        let staked_sui = stake_with(0, 50, &mut scenario);
+
+        let mut storage = new(scenario.ctx());
+        assert!(storage.total_sui_supply() == 0, 0);
+
+        let mut system_state = scenario.take_shared<SuiSystemState>();
+
+        storage.join_stake(&mut system_state, staked_sui, scenario.ctx());
+
+        assert!(storage.validators().length() == 1, 0);
+        assert!(storage.total_sui_supply() == 50 * MIST_PER_SUI, 0);
+        assert!(storage.validators()[0].total_sui_amount() == 50 * MIST_PER_SUI, 0);
+        assert!(storage.validators()[0].active_stake().is_none(), 0);
+        assert!(storage.validators()[0].inactive_stake().borrow().staked_sui_amount() == 50 * MIST_PER_SUI, 0);
+
+        // Withdraw the stake before refresh
+        let unstaked_sui = storage.unstake_approx_n_sui_from_validator(
+            &mut system_state,
+            0,  
+            100 * MIST_PER_SUI,  
+            scenario.ctx()
+        );
+
+        assert!(unstaked_sui == 50 * MIST_PER_SUI, 0);
+        assert!(storage.total_sui_supply() == 50 * MIST_PER_SUI, 0);
+        assert!(storage.sui_pool().value() == 50 * MIST_PER_SUI, 0);
+        assert!(storage.validators()[0].total_sui_amount() == 0, 0);
+        assert!(storage.validators()[0].active_stake().is_none(), 0);
+        assert!(storage.validators()[0].inactive_stake().is_none(), 0);
+
+        test_scenario::return_shared(system_state);
+        advance_epoch_with_reward_amounts(0, 0, &mut scenario);
+
+        let mut system_state = scenario.take_shared<SuiSystemState>();
+        assert!(storage.refresh(&mut system_state, scenario.ctx()), 0);
+
+        assert!(storage.total_sui_supply() == 50 * MIST_PER_SUI, 0);
+        assert!(storage.sui_pool().value() == 50 * MIST_PER_SUI, 0);
+        assert!(storage.validators().length() == 0, 0);  // Validator should be removed as it's empty
+
+        test_scenario::return_shared(system_state);
+        sui::test_utils::destroy(storage);
+        scenario.end();
+    }
+
     #[test] 
     fun test_join_to_sui_pool() {
         let mut scenario = test_scenario::begin(@0x0);

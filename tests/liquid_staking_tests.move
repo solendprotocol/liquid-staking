@@ -117,7 +117,7 @@ module liquid_staking::liquid_staking_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 0)]
+    #[expected_failure(abort_code = 0, location = liquid_staking::liquid_staking)]
     fun test_create_lst_fail_1() {
         let mut scenario = test_scenario::begin(@0x0);
 
@@ -149,7 +149,7 @@ module liquid_staking::liquid_staking_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 0)]
+    #[expected_failure(abort_code = 0, location = liquid_staking::liquid_staking)]
     fun test_create_lst_fail_2() {
         let mut scenario = test_scenario::begin(@0x0);
 

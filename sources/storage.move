@@ -80,6 +80,10 @@ module liquid_staking::storage {
         self.total_sui_amount
     }
 
+    fun is_empty(self: &ValidatorInfo): bool {
+        self.active_stake.is_none() && self.inactive_stake.is_none() && self.total_sui_amount == 0
+    }
+
     /* Refresh Functions */
     /// update the total sui supply value when the epoch changes
     /// returns true if the storage was updated
@@ -93,8 +97,9 @@ module liquid_staking::storage {
             return false
         };
 
-        let mut i = 0;
-        while (i < self.validator_infos.length()) {
+        let mut i = self.validator_infos.length();
+        while (i > 0) {
+            i = i - 1;
 
             // update pool token exchange rates
             let validator_info = &mut self.validator_infos[i];
@@ -110,7 +115,12 @@ module liquid_staking::storage {
             };
 
             refresh_validator_info(self, i);
-            i = i + 1;
+
+            if (self.validator_infos[i].is_empty()) {
+                let ValidatorInfo { active_stake, inactive_stake, .. } = self.validator_infos.remove(i);
+                active_stake.destroy_none();
+                inactive_stake.destroy_none();
+            };
         };
 
         self.last_refresh_epoch = ctx.epoch();
@@ -324,8 +334,10 @@ module liquid_staking::storage {
         ctx: &mut TxContext
     ): Balance<SUI> {
         {
-            let mut i = 0;
-            while (i < self.validators().length() && self.sui_pool.value() < max_sui_amount_out) {
+            let mut i = self.validators().length();
+            while (i > 0 && self.sui_pool.value() < max_sui_amount_out) {
+                i = i - 1;
+
                 let sui_pool_value = self.sui_pool.value();
                 self.unstake_approx_n_sui_from_inactive_stake(
                     system_state,
@@ -333,14 +345,14 @@ module liquid_staking::storage {
                     max_sui_amount_out - sui_pool_value,
                     ctx
                 );
-
-                i = i + 1;
             };
         };
 
         {
-            let mut i = 0;
-            while (i < self.validators().length() && self.sui_pool.value() < max_sui_amount_out) {
+            let mut i = self.validators().length();
+            while (i > 0 && self.sui_pool.value() < max_sui_amount_out) {
+                i = i - 1;
+
                 let sui_pool_value = self.sui_pool.value();
                 self.unstake_approx_n_sui_from_active_stake(
                     system_state,
@@ -348,8 +360,6 @@ module liquid_staking::storage {
                     max_sui_amount_out - sui_pool_value,
                     ctx
                 );
-
-                i = i + 1;
             };
         };
 
