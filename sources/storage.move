@@ -106,7 +106,8 @@ module liquid_staking::storage {
 
             if (validator_info.inactive_stake.is_some()) {
                 let inactive_stake = self.take_from_inactive_stake(i);
-                self.join_stake_to_validator(system_state, i, inactive_stake, ctx);
+                let fungible_staked_sui = system_state.convert_to_fungible_staked_sui(inactive_stake, ctx);
+                self.join_fungible_staked_sui_to_validator(i, fungible_staked_sui);
             };
 
             refresh_validator_info(self, i);
@@ -170,39 +171,60 @@ module liquid_staking::storage {
             ctx
         );
 
-        self.join_stake_to_validator(system_state, validator_index, stake, ctx);
+        if (stake.stake_activation_epoch() <= ctx.epoch()) {
+            let fungible_staked_sui = system_state.convert_to_fungible_staked_sui(stake, ctx);
+            self.join_fungible_staked_sui_to_validator(validator_index, fungible_staked_sui);
+        } else {
+            self.join_inactive_stake_to_validator(validator_index, stake);
+        };
     }
 
-    fun join_stake_to_validator(
+    public(package) fun join_fungible_stake(
         self: &mut Storage, 
         system_state: &mut SuiSystemState,
-        validator_index: u64,
-        stake: StakedSui, 
+        fungible_staked_sui: FungibleStakedSui,
         ctx: &mut TxContext
+    ) {
+        let validator_index = self.get_or_add_validator_index_by_staking_pool_id_mut(
+            system_state, 
+            fungible_staked_sui.pool_id(), 
+            ctx
+        );
+
+        self.join_fungible_staked_sui_to_validator(validator_index, fungible_staked_sui);
+    }
+
+    fun join_inactive_stake_to_validator(
+        self: &mut Storage, 
+        validator_index: u64,
+        stake: StakedSui,
     ) {
         let validator_info = &mut self.validator_infos[validator_index];
 
-        if (stake.stake_activation_epoch() <= ctx.epoch()) {
-            let fungible_staked_sui = system_state.convert_to_fungible_staked_sui(stake, ctx);
-
-            if (validator_info.active_stake.is_some()) {
-                validator_info.active_stake.borrow_mut().join_fungible_staked_sui(fungible_staked_sui);
-
-            } else {
-                validator_info.active_stake.fill(fungible_staked_sui);
-            };
-        }
-        else {
-            if (validator_info.inactive_stake.is_some()) {
-                validator_info.inactive_stake.borrow_mut().join(stake);
-            } else {
-                validator_info.inactive_stake.fill(stake);
-            };
+        if (validator_info.inactive_stake.is_some()) {
+            validator_info.inactive_stake.borrow_mut().join(stake);
+        } else {
+            validator_info.inactive_stake.fill(stake);
         };
 
         self.refresh_validator_info(validator_index);
     }
 
+    fun join_fungible_staked_sui_to_validator(
+        self: &mut Storage, 
+        validator_index: u64,
+        fungible_staked_sui: FungibleStakedSui,
+    ) {
+        let validator_info = &mut self.validator_infos[validator_index];
+        if (validator_info.active_stake.is_some()) {
+            validator_info.active_stake.borrow_mut().join_fungible_staked_sui(fungible_staked_sui);
+
+        } else {
+            validator_info.active_stake.fill(fungible_staked_sui);
+        };
+
+        self.refresh_validator_info(validator_index);
+    }
 
     /* Split/Take Functions */
     public(package) fun split_up_to_n_sui_from_sui_pool(
@@ -399,7 +421,6 @@ module liquid_staking::storage {
         ctx: &mut TxContext
     ): StakedSui {
         let validator_info = &mut self.validator_infos[validator_index];
-        // FIXME: doesn't work if split amount is <= 1 SUI, or the remainder is <= 1 SUI
         let stake = validator_info.inactive_stake
             .borrow_mut()
             .split(sui_amount_out, ctx);

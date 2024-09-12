@@ -7,7 +7,7 @@ module liquid_staking::liquid_staking_tests {
     use sui_system::sui_system::SuiSystemState;
     use sui::coin::{Self};
     use sui::sui::SUI;
-    use liquid_staking::liquid_staking::{create_lst};
+    use liquid_staking::liquid_staking::{create_lst, create_lst_with_stake};
     use liquid_staking::fees::{Self};
     use sui_system::governance_test_utils::{
         advance_epoch_with_reward_amounts,
@@ -48,7 +48,7 @@ module liquid_staking::liquid_staking_tests {
      public struct TEST has drop {}
 
      #[test]
-     fun test_create_lst_happy_1() {
+     fun test_create_lst() {
         let mut scenario = test_scenario::begin(@0x0);
 
         setup_sui_system(&mut scenario, vector[100, 100]);
@@ -58,13 +58,11 @@ module liquid_staking::liquid_staking_tests {
         let mut system_state = scenario.take_shared<SuiSystemState>();
 
         let (admin_cap, lst_info) = create_lst<TEST>(
-            &mut system_state,
             fees::new_builder(scenario.ctx())
                 .set_sui_mint_fee_bps(100)
                 .set_redeem_fee_bps(100)
                 .to_fee_config(),
             coin::create_treasury_cap_for_testing(scenario.ctx()),
-            vector::empty(),
             scenario.ctx()
         );
 
@@ -80,32 +78,36 @@ module liquid_staking::liquid_staking_tests {
      }
 
     #[test]
-    fun test_create_lst_happy_2() {
+    fun test_create_lst_with_stake_happy() {
         let mut scenario = test_scenario::begin(@0x0);
 
         setup_sui_system(&mut scenario, vector[100, 100]);
 
         let staked_sui = stake_with(0, 100, &mut scenario);
 
+        advance_epoch_with_reward_amounts(0, 0, &mut scenario);
+
         let mut system_state = scenario.take_shared<SuiSystemState>();
+        let fungible_staked_sui = system_state.convert_to_fungible_staked_sui(staked_sui, scenario.ctx());
 
         // Create a treasury cap with non-zero coins
-        let mut treasury_cap = coin::create_treasury_cap_for_testing(scenario.ctx());
+        let mut treasury_cap = coin::create_treasury_cap_for_testing<TEST>(scenario.ctx());
         let coins = treasury_cap.mint(1000 * MIST_PER_SUI, scenario.ctx());
 
-        let (admin_cap, lst_info) = create_lst<TEST>(
+        let (admin_cap, lst_info) = create_lst_with_stake<TEST>(
             &mut system_state,
             fees::new_builder(scenario.ctx())
                 .set_sui_mint_fee_bps(100)
                 .set_redeem_fee_bps(100)
                 .to_fee_config(),
             treasury_cap,
-            vector[staked_sui],
+            vector[fungible_staked_sui],
+            coin::mint_for_testing(100 * MIST_PER_SUI, scenario.ctx()),
             scenario.ctx()
         );
 
         assert!(lst_info.total_lst_supply() == 1000 * MIST_PER_SUI, 0);
-        assert!(lst_info.storage().total_sui_supply() == 100 * MIST_PER_SUI, 0);
+        assert!(lst_info.storage().total_sui_supply() == 200 * MIST_PER_SUI, 0);
 
         test_scenario::return_shared(system_state);
 
@@ -118,25 +120,59 @@ module liquid_staking::liquid_staking_tests {
 
     #[test]
     #[expected_failure(abort_code = 0, location = liquid_staking::liquid_staking)]
-    fun test_create_lst_fail_1() {
+    fun test_create_lst_fail() {
+        let mut scenario = test_scenario::begin(@0x0);
+
+        setup_sui_system(&mut scenario, vector[100, 100]);
+
+        let mut system_state = scenario.take_shared<SuiSystemState>();
+
+        let mut treasury_cap = coin::create_treasury_cap_for_testing(scenario.ctx());
+        let coins = treasury_cap.mint(1000 * MIST_PER_SUI, scenario.ctx());
+
+        let (admin_cap, lst_info) = create_lst<TEST>(
+            fees::new_builder(scenario.ctx())
+                .set_sui_mint_fee_bps(100)
+                .set_redeem_fee_bps(100)
+                .to_fee_config(),
+            treasury_cap,
+            scenario.ctx()
+        );
+
+        test_scenario::return_shared(system_state);
+
+        sui::test_utils::destroy(coins);
+        sui::test_utils::destroy(admin_cap);
+        sui::test_utils::destroy(lst_info);
+
+        scenario.end();
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 0, location = liquid_staking::liquid_staking)]
+    fun test_create_lst_with_stake_fail_1() {
         let mut scenario = test_scenario::begin(@0x0);
 
         setup_sui_system(&mut scenario, vector[100, 100]);
         let staked_sui = stake_with(0, 100, &mut scenario);
 
+        advance_epoch_with_reward_amounts(0, 0, &mut scenario);
+
         let mut system_state = scenario.take_shared<SuiSystemState>();
+        let fungible_staked_sui = system_state.convert_to_fungible_staked_sui(staked_sui, scenario.ctx());
 
         // Create an empty treasury cap
         let treasury_cap = coin::create_treasury_cap_for_testing(scenario.ctx());
 
-        let (admin_cap, lst_info) = create_lst<TEST>(
-                &mut system_state,
-                fees::new_builder(scenario.ctx())
-                    .set_sui_mint_fee_bps(100)
-                    .set_redeem_fee_bps(100)
-                    .to_fee_config(),
-                treasury_cap,
-                vector[staked_sui],
+        let (admin_cap, lst_info) = create_lst_with_stake<TEST>(
+            &mut system_state,
+            fees::new_builder(scenario.ctx())
+                .set_sui_mint_fee_bps(100)
+                .set_redeem_fee_bps(100)
+                .to_fee_config(),
+            treasury_cap,
+            vector[fungible_staked_sui],
+            coin::zero<SUI>(scenario.ctx()),
             scenario.ctx()
         );
 
@@ -150,7 +186,7 @@ module liquid_staking::liquid_staking_tests {
 
     #[test]
     #[expected_failure(abort_code = 0, location = liquid_staking::liquid_staking)]
-    fun test_create_lst_fail_2() {
+    fun test_create_lst_with_stake_fail_2() {
         let mut scenario = test_scenario::begin(@0x0);
 
         setup_sui_system(&mut scenario, vector[100, 100]);
@@ -160,14 +196,15 @@ module liquid_staking::liquid_staking_tests {
         let mut treasury_cap = coin::create_treasury_cap_for_testing(scenario.ctx());
         let coins = treasury_cap.mint(1000 * MIST_PER_SUI, scenario.ctx());
 
-        let (admin_cap, lst_info) = create_lst<TEST>(
-                &mut system_state,
-                fees::new_builder(scenario.ctx())
-                    .set_sui_mint_fee_bps(100)
-                    .set_redeem_fee_bps(100)
-                    .to_fee_config(),
-                treasury_cap,
-                vector::empty(),
+        let (admin_cap, lst_info) = create_lst_with_stake<TEST>(
+            &mut system_state,
+            fees::new_builder(scenario.ctx())
+                .set_sui_mint_fee_bps(100)
+                .set_redeem_fee_bps(100)
+                .to_fee_config(),
+            treasury_cap,
+            vector::empty(),
+            coin::zero<SUI>(scenario.ctx()),
             scenario.ctx()
         );
 
@@ -192,13 +229,11 @@ module liquid_staking::liquid_staking_tests {
         let sui = coin::mint_for_testing<SUI>(100 * MIST_PER_SUI, scenario.ctx());
 
         let (admin_cap, mut lst_info) = create_lst<TEST>(
-            &mut system_state,
             fees::new_builder(scenario.ctx())
                 .set_sui_mint_fee_bps(100)
                 .set_redeem_fee_bps(100)
                 .to_fee_config(),
             coin::create_treasury_cap_for_testing(scenario.ctx()),
-            vector::empty(),
             scenario.ctx()
         );
 
@@ -253,13 +288,11 @@ module liquid_staking::liquid_staking_tests {
         let sui = coin::mint_for_testing<SUI>(100 * MIST_PER_SUI, scenario.ctx());
 
         let (admin_cap, mut lst_info) = create_lst<TEST>(
-            &mut system_state,
             fees::new_builder(scenario.ctx())
                 .set_sui_mint_fee_bps(100)
                 .set_redeem_fee_bps(100)
                 .to_fee_config(),
             coin::create_treasury_cap_for_testing(scenario.ctx()),
-            vector::empty(),
             scenario.ctx()
         );
 
@@ -367,13 +400,11 @@ module liquid_staking::liquid_staking_tests {
         let mut system_state = scenario.take_shared<SuiSystemState>();
 
         let (admin_cap, mut lst_info) = create_lst<TEST>(
-            &mut system_state,
             fees::new_builder(scenario.ctx())
                 .set_spread_fee_bps(5000) // 50%
                 .set_sui_mint_fee_bps(1000) // 10%
                 .to_fee_config(),
             coin::create_treasury_cap_for_testing(scenario.ctx()),
-            vector::empty(),
             scenario.ctx()
         );
 
@@ -443,13 +474,11 @@ module liquid_staking::liquid_staking_tests {
         let mut system_state = scenario.take_shared<SuiSystemState>();
 
         let (admin_cap, mut lst_info) = create_lst<TEST>(
-            &mut system_state,
             fees::new_builder(scenario.ctx())
                 .set_spread_fee_bps(5000) // 50%
                 .set_sui_mint_fee_bps(1000) // 10%
                 .to_fee_config(),
             coin::create_treasury_cap_for_testing(scenario.ctx()),
-            vector::empty(),
             scenario.ctx()
         );
 
@@ -478,20 +507,20 @@ module liquid_staking::liquid_staking_tests {
         setup_sui_system(&mut scenario, vector[100, 100]);
         scenario.next_tx(@0x0);
 
-        let staked_sui = stake_with(0, 100, &mut scenario);
         let mut treasury_cap = coin::create_treasury_cap_for_testing<TEST>(scenario.ctx());
         let lst = treasury_cap.mint(100 * MIST_PER_SUI, scenario.ctx());
 
         let mut system_state = scenario.take_shared<SuiSystemState>();
 
-        let (admin_cap, mut lst_info) = create_lst<TEST>(
+        let (admin_cap, mut lst_info) = create_lst_with_stake<TEST>(
             &mut system_state,
             fees::new_builder(scenario.ctx())
                 .set_spread_fee_bps(5000) // 50%
                 .set_sui_mint_fee_bps(1000) // 10%
                 .to_fee_config(),
             treasury_cap,
-            vector[staked_sui],
+            vector::empty(),
+            coin::mint_for_testing(100 * MIST_PER_SUI, scenario.ctx()),
             scenario.ctx()
         );
 
@@ -526,13 +555,11 @@ module liquid_staking::liquid_staking_tests {
         let mut system_state = scenario.take_shared<SuiSystemState>();
 
         let (admin_cap, mut lst_info) = create_lst<TEST>(
-            &mut system_state,
             fees::new_builder(scenario.ctx())
                 .set_spread_fee_bps(5000) // 50%
                 .set_sui_mint_fee_bps(1000) // 10%
                 .to_fee_config(),
             coin::create_treasury_cap_for_testing(scenario.ctx()),
-            vector::empty(),
             scenario.ctx()
         );
 
@@ -570,15 +597,20 @@ module liquid_staking::liquid_staking_tests {
         let mut treasury_cap = coin::create_treasury_cap_for_testing<TEST>(scenario.ctx());
         let lst = treasury_cap.mint(100 * MIST_PER_SUI, scenario.ctx());
 
+        advance_epoch_with_reward_amounts(0, 0, &mut scenario);
+
         let mut system_state = scenario.take_shared<SuiSystemState>();
-        let (admin_cap, mut lst_info) = create_lst<TEST>(
+        let fungible_staked_sui = system_state.convert_to_fungible_staked_sui(staked_sui, scenario.ctx());
+
+        let (admin_cap, mut lst_info) = create_lst_with_stake<TEST>(
             &mut system_state,
             fees::new_builder(scenario.ctx())
                 .set_spread_fee_bps(5000) // 50%
                 .set_sui_mint_fee_bps(1000) // 10%
                 .to_fee_config(),
             treasury_cap,
-            vector[staked_sui],
+            vector[fungible_staked_sui],
+            coin::zero<SUI>(scenario.ctx()),
             scenario.ctx()
         );
 

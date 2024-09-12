@@ -11,7 +11,7 @@ module liquid_staking::liquid_staking {
     use sui::coin::{TreasuryCap};
     use liquid_staking::version::{Self, Version};
     use liquid_staking::events::{emit_event};
-    use sui_system::staking_pool::{StakedSui};
+    use sui_system::staking_pool::{FungibleStakedSui};
 
     /* Errors */
     const EInvalidLstCreation: u64 = 0;
@@ -101,18 +101,57 @@ module liquid_staking::liquid_staking {
     /* Public Mutative Functions */
 
     public fun create_lst<P: drop>(
+        fee_config: FeeConfig, 
+        lst_treasury_cap: TreasuryCap<P>,
+        ctx: &mut TxContext
+    ): (AdminCap<P>, LiquidStakingInfo<P>) {
+        assert!(lst_treasury_cap.total_supply() == 0, EInvalidLstCreation);
+
+        let storage = storage::new(ctx);
+        create_lst_with_storage(
+            fee_config,
+            lst_treasury_cap,
+            storage,
+            ctx
+        )
+    }
+
+    public fun create_lst_with_stake<P: drop>(
         system_state: &mut SuiSystemState, 
         fee_config: FeeConfig, 
         lst_treasury_cap: TreasuryCap<P>,
-        mut staked_suis: vector<StakedSui>,
+        mut fungible_staked_suis: vector<FungibleStakedSui>,
+        sui: Coin<SUI>,
         ctx: &mut TxContext
     ): (AdminCap<P>, LiquidStakingInfo<P>) {
-        assert!(
-            (lst_treasury_cap.total_supply() == 0 && staked_suis.is_empty()) 
-            || (lst_treasury_cap.total_supply() != 0 && !staked_suis.is_empty()),
-            EInvalidLstCreation
-        );
+        let mut storage = storage::new(ctx);
+        while (!fungible_staked_suis.is_empty()) {
+            let fungible_staked_sui = fungible_staked_suis.pop_back();
+            storage.join_fungible_stake(
+                system_state,
+                fungible_staked_sui,
+                ctx
+            );
+        };
 
+        vector::destroy_empty(fungible_staked_suis);
+        storage.join_to_sui_pool(sui.into_balance());
+
+        assert!(lst_treasury_cap.total_supply() > 0 && storage.total_sui_supply() > 0, EInvalidLstCreation);
+        create_lst_with_storage(
+            fee_config,
+            lst_treasury_cap,
+            storage,
+            ctx
+        )
+    }
+
+    fun create_lst_with_storage<P: drop>(
+        fee_config: FeeConfig, 
+        lst_treasury_cap: TreasuryCap<P>,
+        storage: Storage,
+        ctx: &mut TxContext
+    ): (AdminCap<P>, LiquidStakingInfo<P>) {
         (
             AdminCap<P> { id: object::new(ctx) },
             LiquidStakingInfo {
@@ -121,21 +160,7 @@ module liquid_staking::liquid_staking {
                 fee_config: cell::new(fee_config),
                 fees: balance::zero(),
                 accrued_spread_fees: 0,
-                storage: {
-                    let mut storage = storage::new(ctx);
-                    while (!staked_suis.is_empty()) {
-                        let staked_sui = staked_suis.pop_back();
-                        storage.join_stake(
-                            system_state,
-                            staked_sui,
-                            ctx
-                        );
-                    };
-
-                    staked_suis.destroy_empty();
-
-                    storage
-                },
+                storage,
                 version: version::new(CURRENT_VERSION),
                 extra_fields: bag::new(ctx)
             }
@@ -208,11 +233,11 @@ module liquid_staking::liquid_staking {
     ): u64 {
         self.refresh(system_state, ctx);
 
-        if (self.storage.sui_pool().value() < MIN_STAKE_AMOUNT) {
+        let sui = self.storage.split_up_to_n_sui_from_sui_pool(sui_amount);
+        if (sui.value() < MIN_STAKE_AMOUNT) {
+            self.storage.join_to_sui_pool(sui);
             return 0
         };
-
-        let sui = self.storage.split_up_to_n_sui_from_sui_pool(sui_amount);
 
         let staked_sui = system_state.request_add_stake_non_entry(
             coin::from_balance(sui, ctx),
