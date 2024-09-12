@@ -223,6 +223,15 @@ module liquid_staking::liquid_staking {
 
 
     // Admin Functions
+    public fun change_validator_priority<P>(
+        self: &mut LiquidStakingInfo<P>,
+        _: &AdminCap<P>,
+        validator_index: u64,
+        new_validator_index: u64
+    ) {
+        self.storage.change_validator_priority(validator_index, new_validator_index);
+    }
+        
     public fun increase_validator_stake<P>(
         self: &mut LiquidStakingInfo<P>,
         _: &AdminCap<P>,

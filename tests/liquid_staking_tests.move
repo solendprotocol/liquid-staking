@@ -544,6 +544,79 @@ module liquid_staking::liquid_staking_tests {
         scenario.end();
     }
 
+    #[test]
+    fun test_change_validator_priority() {
+        let mut scenario = test_scenario::begin(@0x0);
+        setup_sui_system(&mut scenario, vector[100, 100]);
+
+        scenario.next_tx(@0x0);
+
+        let mut treasury_cap = coin::create_treasury_cap_for_testing<TEST>(scenario.ctx());
+        let lst = treasury_cap.mint(100 * MIST_PER_SUI, scenario.ctx());
+
+        let mut system_state = scenario.take_shared<SuiSystemState>();
+        let pool_id_1 = system_state.validator_staking_pool_id(@0x0);
+        let pool_id_2 = system_state.validator_staking_pool_id(@0x1);
+
+        let (admin_cap, mut lst_info) = create_lst_with_stake<TEST>(
+            &mut system_state,
+            fees::new_builder(scenario.ctx())
+                .set_spread_fee_bps(5000) // 50%
+                .set_sui_mint_fee_bps(1000) // 10%
+                .to_fee_config(),
+            treasury_cap,
+            vector::empty(),
+            coin::mint_for_testing(100 * MIST_PER_SUI, scenario.ctx()),
+            scenario.ctx()
+        );
+
+        lst_info.increase_validator_stake(
+            &admin_cap,
+            &mut system_state,
+            @0x0,
+            MIST_PER_SUI,
+            scenario.ctx()
+        );
+
+        lst_info.increase_validator_stake(
+            &admin_cap,
+            &mut system_state,
+            @0x1,
+            MIST_PER_SUI,
+            scenario.ctx()
+        );
+
+        assert!(lst_info.storage().validators()[0].staking_pool_id() == pool_id_1);
+        assert!(lst_info.storage().validators()[1].staking_pool_id() == pool_id_2);
+
+        lst_info.change_validator_priority(
+            &admin_cap,
+            0,
+            1
+        );
+
+        assert!(lst_info.storage().validators()[0].staking_pool_id() == pool_id_2);
+        assert!(lst_info.storage().validators()[1].staking_pool_id() == pool_id_1);
+
+        lst_info.change_validator_priority(
+            &admin_cap,
+            0,
+            0
+        );
+
+        assert!(lst_info.storage().validators()[0].staking_pool_id() == pool_id_2);
+        assert!(lst_info.storage().validators()[1].staking_pool_id() == pool_id_1);
+
+        sui::test_utils::destroy(lst);
+
+        test_scenario::return_shared(system_state);
+
+        sui::test_utils::destroy(admin_cap);
+        sui::test_utils::destroy(lst_info);
+
+        scenario.end();
+    }
+
     /* randomized testing */
 
     #[random_test]

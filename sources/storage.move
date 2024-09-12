@@ -152,6 +152,21 @@ module liquid_staking::storage {
         self.total_sui_supply = self.total_sui_supply + total_sui_amount;
     }
 
+    // the higher the validator index, the lower the priority. In this case, low priority means it'll
+    // process unstake requests first
+    public(package) fun change_validator_priority(
+        self: &mut Storage, 
+        validator_index: u64, 
+        new_validator_index: u64
+    ) {
+        if (validator_index == new_validator_index) {
+            return
+        };
+
+        let validator_info = self.validator_infos.remove(validator_index);
+        self.validator_infos.insert(validator_info, new_validator_index);
+    }
+
 
     /* Join Functions */
     public(package) fun join_to_sui_pool(self: &mut Storage, sui: Balance<SUI>) {
