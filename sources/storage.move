@@ -14,23 +14,18 @@ module liquid_staking::storage {
     public struct Storage has store {
         sui_pool: Balance<SUI>,
         validator_infos: vector<ValidatorInfo>,
-
-        // sum of all active and inactive stake
-        total_sui_supply: u64,
+        total_sui_supply: u64, // sum of all active and inactive stake
         last_refresh_epoch: u64,
         extra_fields: Bag
     }
 
     public struct ValidatorInfo has store {
         staking_pool_id: ID,
-
         active_stake: Option<FungibleStakedSui>,
         inactive_stake: Option<StakedSui>,
-
         exchange_rate: PoolTokenExchangeRate,
-
-        // sum of active and inactive stake (principal and rewards)
-        total_sui_amount: u64
+        total_sui_amount: u64, // sum of active and inactive stake (principal and rewards)
+        extra_fields: Bag
     }
 
     public(package) fun new(ctx: &mut TxContext): Storage {
@@ -117,9 +112,10 @@ module liquid_staking::storage {
             refresh_validator_info(self, i);
 
             if (self.validator_infos[i].is_empty()) {
-                let ValidatorInfo { active_stake, inactive_stake, .. } = self.validator_infos.remove(i);
+                let ValidatorInfo { active_stake, inactive_stake, extra_fields, .. } = self.validator_infos.remove(i);
                 active_stake.destroy_none();
                 inactive_stake.destroy_none();
+                extra_fields.destroy_empty();
             };
         };
 
@@ -309,10 +305,7 @@ module liquid_staking::storage {
         let target_unstake_sui_amount = max(target_unstake_sui_amount, MIN_STAKE_THRESHOLD);
 
         let staked_sui_amount = validator_info.inactive_stake.borrow().staked_sui_amount();
-        let staked_sui = if (
-            staked_sui_amount <= target_unstake_sui_amount 
-            || staked_sui_amount - target_unstake_sui_amount < MIN_STAKE_THRESHOLD
-        ) {
+        let staked_sui = if (staked_sui_amount <= target_unstake_sui_amount + MIN_STAKE_THRESHOLD) {
             self.take_from_inactive_stake(validator_index)
         } 
         else {
@@ -327,7 +320,7 @@ module liquid_staking::storage {
     }
 
     // This function approximately unstakes n SUI from validators, then returns up to n SUI.
-    public(package) fun split_up_to_n_sui(
+    public(package) fun split_n_sui(
         self: &mut Storage,
         system_state: &mut SuiSystemState,
         max_sui_amount_out: u64,
@@ -363,7 +356,7 @@ module liquid_staking::storage {
             };
         };
 
-        self.split_up_to_n_sui_from_sui_pool(max_sui_amount_out)
+        self.split_from_sui_pool(max_sui_amount_out)
     }
 
     /* all split/unstake/take functions are built using the following 4 functions */
@@ -433,7 +426,7 @@ module liquid_staking::storage {
         self: &mut Storage, 
         system_state: &mut SuiSystemState,
         staking_pool_id: ID,
-        ctx: &TxContext
+        ctx: &mut TxContext
     ): u64 {
         let mut i = 0;
         while (i < self.validator_infos.length()) {
@@ -452,7 +445,8 @@ module liquid_staking::storage {
             active_stake: option::none(),
             inactive_stake: option::none(),
             exchange_rate: *latest_exchange_rate,
-            total_sui_amount: 0
+            total_sui_amount: 0,
+            extra_fields: bag::new(ctx)
         });
 
         i

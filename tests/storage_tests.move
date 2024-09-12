@@ -815,7 +815,7 @@ module liquid_staking::storage_tests {
         assert!(storage.validators()[1].total_sui_amount() == 200 * MIST_PER_SUI, 0);
 
         // start of test
-        let sui = storage.split_up_to_n_sui(
+        let sui = storage.split_n_sui(
             &mut system_state,
             100 * MIST_PER_SUI,
             scenario.ctx()
@@ -866,7 +866,7 @@ module liquid_staking::storage_tests {
         assert!(storage.validators()[1].total_sui_amount() == 200 * MIST_PER_SUI, 0);
 
         // start of test
-        let sui = storage.split_up_to_n_sui(
+        let sui = storage.split_n_sui(
             &mut system_state,
             200 * MIST_PER_SUI,
             scenario.ctx()
@@ -917,9 +917,9 @@ module liquid_staking::storage_tests {
         assert!(storage.validators()[1].total_sui_amount() == 200 * MIST_PER_SUI, 0);
 
         // start of test
-        let sui = storage.split_up_to_n_sui(
+        let sui = storage.split_n_sui(
             &mut system_state,
-            600 * MIST_PER_SUI + 1,
+            600 * MIST_PER_SUI,
             scenario.ctx()
         );
 
@@ -970,7 +970,7 @@ module liquid_staking::storage_tests {
         assert!(storage.validators()[1].total_sui_amount() == 200 * MIST_PER_SUI, 0);
 
         // start of test
-        let sui = storage.split_up_to_n_sui(
+        let sui = storage.split_n_sui(
             &mut system_state,
             0,
             scenario.ctx()
