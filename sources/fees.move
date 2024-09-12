@@ -10,6 +10,7 @@ module liquid_staking::fees {
         redeem_fee_bps: u64,
         staked_sui_redeem_fee_bps: u64, // unused
         spread_fee_bps: u64,
+        custom_redeem_fee_bps: u64, // unused
         extra_fields: Bag // in case we add other fees later
     }
 
@@ -37,6 +38,10 @@ module liquid_staking::fees {
         fees.spread_fee_bps
     }
 
+    public fun custom_redeem_fee_bps(fees: &FeeConfig): u64 {
+        fees.custom_redeem_fee_bps
+    }
+
     public fun new_builder(ctx: &mut TxContext): FeeConfigBuilder {
         FeeConfigBuilder { fields: bag::new(ctx) }
     }
@@ -58,6 +63,11 @@ module liquid_staking::fees {
 
     public fun set_staked_sui_redeem_fee_bps(mut self: FeeConfigBuilder, fee: u64): FeeConfigBuilder {
         bag::add(&mut self.fields, b"staked_sui_redeem_fee_bps", fee);
+        self
+    }
+
+    public fun set_custom_redeem_fee_bps(mut self: FeeConfigBuilder, fee: u64): FeeConfigBuilder {
+        bag::add(&mut self.fields, b"custom_redeem_fee_bps", fee);
         self
     }
 
@@ -95,6 +105,11 @@ module liquid_staking::fees {
             } else {
                 0
             },
+            custom_redeem_fee_bps: if (bag::contains(&fields, b"custom_redeem_fee_bps")) {
+                bag::remove(&mut fields, b"custom_redeem_fee_bps")
+            } else {
+                0
+            },
             extra_fields: fields
         };
 
@@ -104,29 +119,20 @@ module liquid_staking::fees {
     }
 
     public fun destroy(fees: FeeConfig) {
-        let FeeConfig { 
-            sui_mint_fee_bps: _,
-            staked_sui_mint_fee_bps: _,
-            redeem_fee_bps: _,
-            staked_sui_redeem_fee_bps: _,
-            spread_fee_bps: _,
-            extra_fields
-        } = fees;
-
+        let FeeConfig { extra_fields, .. } = fees;
         bag::destroy_empty(extra_fields);
     }
 
-
-
+    // Note that while it's technically exploitable, we allow lsts to be created with 0 mint/redeem fees.
+    // This is because having a 0 fee LST is useful in certain cases where mint/redemption can only be done by 
+    // a single party. It is up to the pool creator to ensure that the fees are set correctly.
     fun validate_fees(fees: &FeeConfig) {
-        // make sure all fees are less than 100%. do them in order wrt the Struct definition.
         assert!(fees.sui_mint_fee_bps <= 10_000, EInvalidFeeConfig);
         assert!(fees.staked_sui_mint_fee_bps <= 10_000, EInvalidFeeConfig);
         assert!(fees.redeem_fee_bps <= 10_000, EInvalidFeeConfig);
         assert!(fees.staked_sui_redeem_fee_bps <= 10_000, EInvalidFeeConfig);
         assert!(fees.spread_fee_bps <= 10_000, EInvalidFeeConfig);
-
-        assert!(fees.sui_mint_fee_bps != 0 || fees.redeem_fee_bps != 0, EInvalidFeeConfig);
+        assert!(fees.custom_redeem_fee_bps <= 10_000, EInvalidFeeConfig);
     }
 
     public fun calculate_mint_fee(self: &FeeConfig, sui_amount: u64): u64 {
@@ -158,6 +164,7 @@ module liquid_staking::fees {
             redeem_fee_bps: 10_000,
             staked_sui_redeem_fee_bps: 10_000,
             spread_fee_bps: 10_000,
+            custom_redeem_fee_bps: 10_000,
             extra_fields: bag::new(scenario.ctx())
         };
 
@@ -177,25 +184,7 @@ module liquid_staking::fees {
             redeem_fee_bps: 10_000,
             staked_sui_redeem_fee_bps: 10_000,
             spread_fee_bps: 10_000,
-            extra_fields: bag::new(scenario.ctx())
-        };
-
-        validate_fees(&fees);
-
-        sui::test_utils::destroy(fees);
-        scenario.end();
-    }
-
-    #[test]
-    #[expected_failure(abort_code = EInvalidFeeConfig)]
-    public fun test_validate_fees_error_sui_and_redeem_both_zero() {
-        let mut scenario = test_scenario::begin(@0x0);
-        let fees = FeeConfig {
-            sui_mint_fee_bps: 0,
-            staked_sui_mint_fee_bps: 10_000,
-            redeem_fee_bps: 0,
-            staked_sui_redeem_fee_bps: 10_000,
-            spread_fee_bps: 10_000,
+            custom_redeem_fee_bps: 10_000,
             extra_fields: bag::new(scenario.ctx())
         };
 
@@ -214,6 +203,7 @@ module liquid_staking::fees {
             redeem_fee_bps: 10_000,
             staked_sui_redeem_fee_bps: 10_000,
             spread_fee_bps: 10_000,
+            custom_redeem_fee_bps: 10_000,
             extra_fields: bag::new(scenario.ctx())
         };
 
@@ -235,6 +225,7 @@ module liquid_staking::fees {
             redeem_fee_bps: 100,
             staked_sui_redeem_fee_bps: 10_000,
             spread_fee_bps: 10_000,
+            custom_redeem_fee_bps: 10_000,
             extra_fields: bag::new(scenario.ctx())
         };
 
