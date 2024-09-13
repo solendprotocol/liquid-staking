@@ -11,20 +11,34 @@ module liquid_staking::storage {
     /* Constants */
     const MIN_STAKE_THRESHOLD: u64 = 1_000_000_000;
 
+    /// The Storage struct holds all stake for the LST.
     public struct Storage has store {
+        /// Sui balance. Unstake operations deposit SUI here. 
         sui_pool: Balance<SUI>,
+        /// Validators that have stake in the LST.
         validator_infos: vector<ValidatorInfo>,
-        total_sui_supply: u64, // sum of all active and inactive stake
+        /// Total Sui managed by the LST. This is the sum of all active 
+        /// stake, inactive stake, and SUI in the sui_pool.
+        total_sui_supply: u64,
+        /// The epoch at which the storage was last refreshed.
         last_refresh_epoch: u64,
+        /// Extra fields for future-proofing.
         extra_fields: Bag
     }
 
+    /// ValidatorInfo holds all stake for a single validator.
     public struct ValidatorInfo has store {
+        /// The staking pool ID for the validator.
         staking_pool_id: ID,
+        /// The active stake for the validator.
         active_stake: Option<FungibleStakedSui>,
+        /// The inactive stake for the validator.
         inactive_stake: Option<StakedSui>,
+        /// The exchange rate for the validator.
         exchange_rate: PoolTokenExchangeRate,
-        total_sui_amount: u64, // sum of active and inactive stake (principal and rewards)
+        /// The total Sui staked to the validator (active stake + inactive stake).
+        total_sui_amount: u64,
+        /// Extra fields for future-proofing.
         extra_fields: Bag
     }
 
@@ -80,8 +94,12 @@ module liquid_staking::storage {
     }
 
     /* Refresh Functions */
-    /// update the total sui supply value when the epoch changes
-    /// returns true if the storage was updated
+
+    /// Idempotent function that:
+    /// - Updates the exchange rate for all validators.
+    /// - Moves any inactive stake that can be converted to active stake.
+    /// - Removes validators that have no stake.
+    /// Returns true if the storage was updated.
     public(package) fun refresh(
         self: &mut Storage, 
         system_state: &mut SuiSystemState, 
@@ -124,8 +142,8 @@ module liquid_staking::storage {
         true
     }
 
-    /// Update the total sui amount for the validator and modify the storage sui supply accordingly
-    /// assumes the exchange rate is up to date
+    /// Update the total sui amount for the validator and modify the 
+    /// storage sui supply accordingly assumes the exchange rate is up to date
     fun refresh_validator_info(self: &mut Storage, i: u64) {
         let validator_info = &mut self.validator_infos[i];
         self.total_sui_supply = self.total_sui_supply - validator_info.total_sui_amount;
