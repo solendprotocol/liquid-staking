@@ -30,6 +30,8 @@ module liquid_staking::storage {
     public struct ValidatorInfo has store {
         /// The staking pool ID for the validator.
         staking_pool_id: ID,
+        /// The validator's address.
+        validator_address: address,
         /// The active stake for the validator.
         active_stake: Option<FungibleStakedSui>,
         /// The inactive stake for the validator.
@@ -71,6 +73,10 @@ module liquid_staking::storage {
 
     public(package) fun staking_pool_id(self: &ValidatorInfo): ID {
         self.staking_pool_id
+    }
+
+    public(package) fun validator_address(self: &ValidatorInfo): address {
+        self.validator_address
     }
 
     public(package) fun active_stake(self: &ValidatorInfo): &Option<FungibleStakedSui> {
@@ -485,11 +491,13 @@ module liquid_staking::storage {
             i = i + 1;
         };
 
+        let validator_address = system_state.validator_address_by_pool_id(&staking_pool_id);
         let exchange_rates = system_state.pool_exchange_rates(&staking_pool_id);
         let latest_exchange_rate = exchange_rates.borrow(ctx.epoch());
 
         self.validator_infos.push_back(ValidatorInfo {
             staking_pool_id: copy staking_pool_id,
+            validator_address,
             active_stake: option::none(),
             inactive_stake: option::none(),
             exchange_rate: *latest_exchange_rate,

@@ -312,12 +312,14 @@ module liquid_staking::storage_tests {
         assert!(storage.total_sui_supply() == 500 * MIST_PER_SUI, 0);
 
         assert!(storage.validators()[0].total_sui_amount() == 300 * MIST_PER_SUI, 0);
+        assert!(storage.validators()[0].validator_address() == @0x0, 0);
         assert!(storage.validators()[0].active_stake().borrow().value() == 100 * MIST_PER_SUI, 0);
         assert!(storage.validators()[0].inactive_stake().borrow().staked_sui_amount() == 100 * MIST_PER_SUI, 0);
         assert!(storage.validators()[0].exchange_rate().sui_amount() == 400 * MIST_PER_SUI, 0);
         assert!(storage.validators()[0].exchange_rate().pool_token_amount() == 200 * MIST_PER_SUI, 0);
 
         assert!(storage.validators()[1].total_sui_amount() == 200 * MIST_PER_SUI, 0);
+        assert!(storage.validators()[1].validator_address() == @0x1, 0);
         assert!(storage.validators()[1].active_stake().borrow().value() == 100 * MIST_PER_SUI, 0);
         assert!(storage.validators()[1].inactive_stake().is_none(), 0);
         assert!(storage.validators()[1].exchange_rate().sui_amount() == 400 * MIST_PER_SUI, 0);
