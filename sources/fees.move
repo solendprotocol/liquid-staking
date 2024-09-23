@@ -135,7 +135,7 @@ module liquid_staking::fees {
         assert!(fees.custom_redeem_fee_bps <= 10_000, EInvalidFeeConfig);
     }
 
-    public fun calculate_mint_fee(self: &FeeConfig, sui_amount: u64): u64 {
+    public(package) fun calculate_mint_fee(self: &FeeConfig, sui_amount: u64): u64 {
         if (self.sui_mint_fee_bps == 0) {
             return 0
         };
@@ -144,7 +144,7 @@ module liquid_staking::fees {
         (((sui_amount as u128) * (self.sui_mint_fee_bps as u128) + 9999) / 10_000) as u64
     }
 
-    public fun calculate_redeem_fee(self: &FeeConfig, sui_amount: u64): u64 {
+    public(package) fun calculate_redeem_fee(self: &FeeConfig, sui_amount: u64): u64 {
         if (self.redeem_fee_bps == 0) {
             return 0
         };
