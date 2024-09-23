@@ -688,12 +688,12 @@ module liquid_staking::storage_tests {
             scenario.ctx()
         );
 
-        assert!(amount == 2 * MIST_PER_SUI, 0);
+        assert!(amount == MIST_PER_SUI, 0);
         assert!(storage.validators().length() == 1, 0);
         assert!(storage.total_sui_supply() == 200 * MIST_PER_SUI, 0);
-        assert!(storage.sui_pool().value() == 2 * MIST_PER_SUI, 0);
-        assert!(storage.validators()[0].total_sui_amount() == 198 * MIST_PER_SUI, 0);
-        assert!(storage.validators()[0].active_stake().borrow().value() == 99_000_000_000, 0);
+        assert!(storage.sui_pool().value() == MIST_PER_SUI, 0);
+        assert!(storage.validators()[0].total_sui_amount() == 199 * MIST_PER_SUI, 0);
+        assert!(storage.validators()[0].active_stake().borrow().value() == 99_500_000_000, 0);
         assert!(storage.validators()[0].inactive_stake().is_none(), 0);
 
         sui::test_utils::destroy(storage);
@@ -728,12 +728,12 @@ module liquid_staking::storage_tests {
             scenario.ctx()
         );
 
-        assert!(amount == 200 * MIST_PER_SUI, 0);
+        assert!(amount == 199 * MIST_PER_SUI + 2, 0);
         assert!(storage.validators().length() == 1, 0);
         assert!(storage.total_sui_supply() == 200 * MIST_PER_SUI, 0);
-        assert!(storage.sui_pool().value() == 200 * MIST_PER_SUI, 0);
-        assert!(storage.validators()[0].total_sui_amount() == 0, 0);
-        assert!(storage.validators()[0].active_stake().is_none(), 0);
+        assert!(storage.sui_pool().value() == 199 * MIST_PER_SUI + 2, 0);
+        assert!(storage.validators()[0].total_sui_amount() == MIST_PER_SUI - 2, 0);
+        assert!(storage.validators()[0].active_stake().borrow().value() == MIST_PER_SUI / 2 - 1, 0);
         assert!(storage.validators()[0].inactive_stake().is_none(), 0);
 
         sui::test_utils::destroy(storage);

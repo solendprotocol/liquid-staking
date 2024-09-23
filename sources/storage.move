@@ -316,22 +316,16 @@ module liquid_staking::storage {
             self.take_active_stake(system_state, validator_index, ctx)
         } 
         else {
-            let split_amount = max(
-                // ceil(target_unstake_sui_amount * fungible_staked_sui_amount / total_sui_amount)
-                (((target_unstake_sui_amount as u128)
+            // ceil(target_unstake_sui_amount * fungible_staked_sui_amount / total_sui_amount)
+            let split_amount = (
+                ((target_unstake_sui_amount as u128)
                     * (fungible_staked_sui_amount as u128)
                     + (total_sui_amount as u128)
                     - 1)
-                / (total_sui_amount as u128)) as u64,
-                MIN_STAKE_THRESHOLD
-            );
+                / (total_sui_amount as u128)
+            ) as u64;
 
-            if (fungible_staked_sui_amount - split_amount < MIN_STAKE_THRESHOLD) {
-                self.take_active_stake(system_state, validator_index, ctx)
-            }
-            else {
-                self.split_from_active_stake(system_state, validator_index, split_amount as u64, ctx)
-            }
+            self.split_from_active_stake(system_state, validator_index, split_amount as u64, ctx)
         };
 
         let unstaked_sui_amount = unstaked_sui.value();
