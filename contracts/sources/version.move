@@ -6,7 +6,7 @@ module liquid_staking::version {
     const EIncorrectVersion: u64 = 0;
 
     /// Capability object given to the pool creator
-    public struct Version has store(u16)
+    public struct Version has store, drop (u16)
 
     public(package) fun new(
         version: u16,
