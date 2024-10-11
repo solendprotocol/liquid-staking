@@ -12,6 +12,8 @@ module liquid_staking::liquid_staking {
     use liquid_staking::version::{Self, Version};
     use liquid_staking::events::{emit_event};
     use sui_system::staking_pool::{FungibleStakedSui};
+    use std::type_name::{Self, TypeName};
+    use sui::package;
 
     /* Errors */
     const EInvalidLstCreation: u64 = 0;
@@ -19,6 +21,8 @@ module liquid_staking::liquid_staking {
     /* Constants */
     const CURRENT_VERSION: u16 = 1;
     const MIN_STAKE_AMOUNT: u64 = 1_000_000_000;
+
+    public struct LIQUID_STAKING has drop {}
 
     public struct LiquidStakingInfo<phantom P> has key, store {
         id: UID,
@@ -36,33 +40,44 @@ module liquid_staking::liquid_staking {
     }
 
     /* Events */
-    public struct MintEvent<phantom P> has copy, drop {
+    public struct CreateEvent has copy, drop {
+        typename: TypeName,
+        liquid_staking_info_id: ID
+    }
+
+    public struct MintEvent has copy, drop {
+        typename: TypeName,
         sui_amount_in: u64,
         lst_amount_out: u64,
         fee_amount: u64
     }
 
-    public struct RedeemEvent<phantom P> has copy, drop {
+    public struct RedeemEvent has copy, drop {
+        typename: TypeName,
         lst_amount_in: u64,
         sui_amount_out: u64,
         fee_amount: u64
     }
 
-    public struct DecreaseValidatorStakeEvent<phantom P> has copy, drop {
+    public struct DecreaseValidatorStakeEvent has copy, drop {
+        typename: TypeName,
         staking_pool_id: ID,
         amount: u64
     }
 
-    public struct IncreaseValidatorStakeEvent<phantom P> has copy, drop {
+    public struct IncreaseValidatorStakeEvent has copy, drop {
+        typename: TypeName,
         staking_pool_id: ID,
         amount: u64
     }
 
-    public struct CollectFeesEvent<phantom P> has copy, drop {
+    public struct CollectFeesEvent has copy, drop {
+        typename: TypeName,
         amount: u64
     }
 
-    public struct EpochChangedEvent<phantom P> has copy, drop {
+    public struct EpochChangedEvent has copy, drop {
+        typename: TypeName,
         old_sui_supply: u64,
         new_sui_supply: u64,
         lst_supply: u64,
@@ -99,6 +114,9 @@ module liquid_staking::liquid_staking {
     }
 
     /* Public Mutative Functions */
+    fun init(otw: LIQUID_STAKING, ctx: &mut TxContext) {
+        package::claim_and_keep(otw, ctx)
+    }
 
     public fun create_lst<P: drop>(
         fee_config: FeeConfig, 
@@ -152,10 +170,17 @@ module liquid_staking::liquid_staking {
         storage: Storage,
         ctx: &mut TxContext
     ): (AdminCap<P>, LiquidStakingInfo<P>) {
+        let uid = object::new(ctx);
+
+        emit_event(CreateEvent {
+            typename: type_name::get<P>(),
+            liquid_staking_info_id: uid.to_inner()
+        });
+
         (
             AdminCap<P> { id: object::new(ctx) },
             LiquidStakingInfo {
-                id: object::new(ctx),
+                id: uid,
                 lst_treasury_cap: lst_treasury_cap,
                 fee_config: cell::new(fee_config),
                 fees: balance::zero(),
@@ -186,7 +211,8 @@ module liquid_staking::liquid_staking {
         let lst_mint_amount = self.sui_amount_to_lst_amount(sui_balance.value());
         self.storage.join_to_sui_pool(sui_balance);
 
-        emit_event(MintEvent<P> {
+        emit_event(MintEvent {
+            typename: type_name::get<P>(),
             sui_amount_in,
             lst_amount_out: lst_mint_amount,
             fee_amount: mint_fee_amount
@@ -210,7 +236,8 @@ module liquid_staking::liquid_staking {
         let redeem_fee_amount = self.fee_config.get().calculate_redeem_fee(sui.value());
         self.fees.join(sui.split(redeem_fee_amount as u64));
 
-        emit_event(RedeemEvent<P> {
+        emit_event(RedeemEvent {
+            typename: type_name::get<P>(),
             lst_amount_in: lst.value(),
             sui_amount_out: sui.value(),
             fee_amount: redeem_fee_amount
@@ -255,7 +282,8 @@ module liquid_staking::liquid_staking {
         );
         let staked_sui_amount = staked_sui.staked_sui_amount();
 
-        emit_event(IncreaseValidatorStakeEvent<P> {
+        emit_event(IncreaseValidatorStakeEvent {
+            typename: type_name::get<P>(),
             staking_pool_id: staked_sui.pool_id(),
             amount: staked_sui.staked_sui_amount()
         });
@@ -282,7 +310,8 @@ module liquid_staking::liquid_staking {
             ctx
         );
 
-        emit_event(DecreaseValidatorStakeEvent<P> {
+        emit_event(DecreaseValidatorStakeEvent {
+            typename: type_name::get<P>(),
             staking_pool_id: self.storage.validators()[validator_index].staking_pool_id(),
             amount: sui_amount
         });
@@ -304,7 +333,8 @@ module liquid_staking::liquid_staking {
         let mut fees = self.fees.withdraw_all();
         fees.join(spread_fees);
 
-        emit_event(CollectFeesEvent<P> {
+        emit_event(CollectFeesEvent {
+            typename: type_name::get<P>(),
             amount: fees.value()
         });
 
@@ -344,7 +374,8 @@ module liquid_staking::liquid_staking {
                     * (self.fee_config.get().spread_fee_bps() as u128) 
                     / (10_000 as u128)) as u64;
 
-                emit_event(EpochChangedEvent<P> {
+                emit_event(EpochChangedEvent {
+                    typename: type_name::get<P>(),
                     old_sui_supply: old_total_supply,
                     new_sui_supply: new_total_supply,
                     lst_supply: self.total_lst_supply(),
