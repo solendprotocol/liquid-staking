@@ -17,6 +17,8 @@ module liquid_staking::liquid_staking {
 
     /* Errors */
     const EInvalidLstCreation: u64 = 0;
+    const EMintInvariantViolated: u64 = 1;
+    const ERedeemInvariantViolated: u64 = 2;
 
     /* Constants */
     const CURRENT_VERSION: u16 = 1;
@@ -201,6 +203,9 @@ module liquid_staking::liquid_staking {
     ): Coin<P> {
         self.refresh(system_state, ctx);
 
+        let old_sui_supply = (self.total_sui_supply() as u128);
+        let old_lst_supply = (self.total_lst_supply() as u128);
+
         let mut sui_balance = sui.into_balance();
         let sui_amount_in = sui_balance.value();
 
@@ -209,7 +214,6 @@ module liquid_staking::liquid_staking {
         self.fees.join(sui_balance.split(mint_fee_amount));
         
         let lst_mint_amount = self.sui_amount_to_lst_amount(sui_balance.value());
-        self.storage.join_to_sui_pool(sui_balance);
 
         emit_event(MintEvent {
             typename: type_name::get<P>(),
@@ -218,7 +222,18 @@ module liquid_staking::liquid_staking {
             fee_amount: mint_fee_amount
         });
 
-        self.lst_treasury_cap.mint(lst_mint_amount, ctx)
+        let lst = self.lst_treasury_cap.mint(lst_mint_amount, ctx);
+
+        // invariant: lst_out / sui_in <= old_lst_supply / old_sui_supply
+        // -> lst_out * old_sui_supply <= sui_in * old_lst_supply
+        assert!(
+            (lst.value() as u128) * old_sui_supply <= (sui_balance.value() as u128) * old_lst_supply,
+            EMintInvariantViolated
+        );
+
+        self.storage.join_to_sui_pool(sui_balance);
+
+        lst
     }
 
     public fun redeem<P: drop>(
@@ -228,6 +243,9 @@ module liquid_staking::liquid_staking {
         ctx: &mut TxContext
     ): Coin<SUI> {
         self.refresh(system_state, ctx);
+
+        let old_sui_supply = (self.total_sui_supply() as u128);
+        let old_lst_supply = (self.total_lst_supply() as u128);
 
         let sui_amount_out = self.lst_amount_to_sui_amount(lst.value());
         let mut sui = self.storage.split_n_sui(system_state, sui_amount_out, ctx);
@@ -242,6 +260,13 @@ module liquid_staking::liquid_staking {
             sui_amount_out: sui.value(),
             fee_amount: redeem_fee_amount
         });
+
+        // invariant: sui_out / lst_in <= old_sui_supply / old_lst_supply
+        // -> sui_out * old_lst_supply <= lst_in * old_sui_supply
+        assert!(
+            (sui.value() as u128) * old_lst_supply <= (lst.value() as u128) * old_sui_supply,
+            ERedeemInvariantViolated
+        );
 
         self.lst_treasury_cap.burn(lst);
 
