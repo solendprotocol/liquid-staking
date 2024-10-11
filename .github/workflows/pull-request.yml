@@ -1,0 +1,24 @@
+name: Pull Request
+
+on:
+  pull_request:
+  push:
+    branches: [mainnet, devel, add_ci]
+
+jobs:
+  move-test:
+    runs-on: ubuntu-latest
+    container: 
+      image: mysten/sui-tools:testnet
+      ports:
+        - 80
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      # bugfix: install git
+      - name: install git
+        run: apt-get install -y git
+
+      - name: test
+        run: cd contracts && sui move test
