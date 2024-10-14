@@ -8,6 +8,8 @@ import {
 import * as generated from "./_generated/liquid_staking/liquid-staking/functions";
 import { newBuilder, setRedeemFeeBps, setSpreadFeeBps, setSuiMintFeeBps, toFeeConfig } from "./_generated/liquid_staking/fees/functions";
 import { fromBase64 } from "@mysten/sui/utils";
+import { LiquidStakingInfo } from "./_generated/liquid_staking/liquid-staking/structs";
+import { phantom } from "./_generated/_framework/reified";
 
 export interface LiquidStakingObjectInfo {
   id: string;
@@ -17,6 +19,9 @@ export interface LiquidStakingObjectInfo {
 const SUI_SYSTEM_STATE_ID = "0x0000000000000000000000000000000000000000000000000000000000000005";
 
 // user functions
+export async function fetchLiquidStakingInfo(info: LiquidStakingObjectInfo, client: SuiClient): Promise<LiquidStakingInfo<any>> {
+  return LiquidStakingInfo.fetch(client, phantom(info.type), info.id);
+}
 
 // returns the lst object
 export function mint(tx: Transaction, info: LiquidStakingObjectInfo, suiCoinId: TransactionObjectInput) {

@@ -212,4 +212,19 @@ program
   .option("--spread-fee <SPREAD_FEE>", "Spread fee")
   .action(updateFees);
 
+
+program
+  .command("fetch-state")
+  .description("fetch the current state of the liquid staking pool")
+  .action(async () => {
+    const client = new SuiClient({ url: RPC_URL });
+    try {
+      const state = await sdk.fetchLiquidStakingInfo(LIQUID_STAKING_INFO, client);
+      console.log("Current Liquid Staking State:");
+      console.log(JSON.stringify(state, null, 2));
+    } catch (error) {
+      console.error("Error fetching state:", error);
+    }
+  });
+
 program.parse(process.argv);
