@@ -389,27 +389,30 @@ module liquid_staking::liquid_staking {
 
         if (self.storage.refresh(system_state, ctx)) { // epoch rolled over
             let new_total_supply = self.total_sui_supply();
-            if (new_total_supply > old_total_supply) {
-                // don't think we need to keep track of this in fixed point.
-                // If there's 1 SUI staked, and the yearly rewards is 1%, then 
-                // the spread fee in 1 epoch is 1 * 0.01 / 365 = 0.0000274 SUI => 27400 MIST
-                // ie very unlikely to round spread fees to 0.
-                let spread_fee = 
-                    (((new_total_supply - old_total_supply) as u128) 
-                    * (self.fee_config.get().spread_fee_bps() as u128) 
-                    / (10_000 as u128)) as u64;
 
-                emit_event(EpochChangedEvent {
-                    typename: type_name::get<P>(),
-                    old_sui_supply: old_total_supply,
-                    new_sui_supply: new_total_supply,
-                    lst_supply: self.total_lst_supply(),
-                    spread_fee
-                });
+            // don't think we need to keep track of this in fixed point.
+            // If there's 1 SUI staked, and the yearly rewards is 1%, then 
+            // the spread fee in 1 epoch is 1 * 0.01 / 365 = 0.0000274 SUI => 27400 MIST
+            // ie very unlikely to round spread fees to 0.
+            let spread_fee = if (new_total_supply > old_total_supply) {
+                (((new_total_supply - old_total_supply) as u128) 
+                * (self.fee_config.get().spread_fee_bps() as u128) 
+                / (10_000 as u128)) as u64
+            } else {
+                0
+            };
 
-                self.accrued_spread_fees = self.accrued_spread_fees + spread_fee;
-                return true
-            }
+            self.accrued_spread_fees = self.accrued_spread_fees + spread_fee;
+
+            emit_event(EpochChangedEvent {
+                typename: type_name::get<P>(),
+                old_sui_supply: old_total_supply,
+                new_sui_supply: new_total_supply,
+                lst_supply: self.total_lst_supply(),
+                spread_fee
+            });
+
+            return true
         };
 
         false
@@ -424,7 +427,7 @@ module liquid_staking::liquid_staking {
         let total_sui_supply = self.total_sui_supply();
         let total_lst_supply = self.total_lst_supply();
 
-        if (total_sui_supply == 0) {
+        if (total_sui_supply == 0 || total_lst_supply == 0) {
             return sui_amount
         };
 
