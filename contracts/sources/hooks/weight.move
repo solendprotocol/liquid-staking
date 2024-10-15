@@ -12,7 +12,7 @@ module liquid_staking::weight {
 
     public struct WeightHook<phantom P> has key, store {
         id: UID,
-        validator_address_and_weights: VecMap<address, u64>,
+        validator_addresses_and_weights: VecMap<address, u64>,
         total_weight: u64,
         admin_cap: AdminCap<P>,
         version: Version,
@@ -30,7 +30,7 @@ module liquid_staking::weight {
         (
             WeightHook {
                 id: object::new(ctx),
-                validator_address_and_weights: vec_map::empty(),
+                validator_addresses_and_weights: vec_map::empty(),
                 total_weight: 0,
                 admin_cap,
                 version: version::new(CURRENT_VERSION),
@@ -40,17 +40,17 @@ module liquid_staking::weight {
         )
     }
 
-    public fun set_validator_address_and_weights<P>(
+    public fun set_validator_addresses_and_weights<P>(
         self: &mut WeightHook<P>,
         _: &WeightHookAdminCap<P>,
-        validator_address_and_weights: VecMap<address, u64>,
+        validator_addresses_and_weights: VecMap<address, u64>,
     ) {
         self.version.assert_version_and_upgrade(CURRENT_VERSION);
-        self.validator_address_and_weights = validator_address_and_weights;
+        self.validator_addresses_and_weights = validator_addresses_and_weights;
 
         let mut total_weight = 0;
-        self.validator_address_and_weights.keys().length().do!(|i| {
-            let (_, weight) = self.validator_address_and_weights.get_entry_by_idx(i);
+        self.validator_addresses_and_weights.keys().length().do!(|i| {
+            let (_, weight) = self.validator_addresses_and_weights.get_entry_by_idx(i);
             total_weight = total_weight + *weight;
         });
 
@@ -70,7 +70,7 @@ module liquid_staking::weight {
 
         liquid_staking_info.refresh(system_state, ctx);
 
-        let mut validator_addresses_and_weights = self.validator_address_and_weights;
+        let mut validator_addresses_and_weights = self.validator_addresses_and_weights;
 
         // 1. add all validators that exist in lst_info.validators() to the validator_address_to_weight map if they don't already exist
         liquid_staking_info.storage().validators().do_ref!(|validator| {

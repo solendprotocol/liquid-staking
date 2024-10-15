@@ -70,7 +70,7 @@ module liquid_staking::weight_tests {
 
         let (mut weight_hook, weight_hook_admin_cap) = weight::new(admin_cap, scenario.ctx());
 
-        weight_hook.set_validator_address_and_weights(
+        weight_hook.set_validator_addresses_and_weights(
             &weight_hook_admin_cap, 
             {
                 let mut map = vec_map::empty();
@@ -88,7 +88,7 @@ module liquid_staking::weight_tests {
         assert!(lst_info.storage().validators().borrow(0).total_sui_amount() == 25 * MIST_PER_SUI, 0);
         assert!(lst_info.storage().validators().borrow(1).total_sui_amount() == 75 * MIST_PER_SUI, 0);
 
-        weight_hook.set_validator_address_and_weights(
+        weight_hook.set_validator_addresses_and_weights(
             &weight_hook_admin_cap, 
             {
                 let mut map = vec_map::empty();
