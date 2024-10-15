@@ -9,10 +9,12 @@ module liquid_staking::storage {
     /* Errors */
     const ENotEnoughSuiInSuiPool: u64 = 0;
     const ENotActiveValidator: u64 = 1;
+    const ETooManyValidators: u64 = 0;
 
     /* Constants */
     const MIN_STAKE_THRESHOLD: u64 = 1_000_000_000;
     const MAX_SUI_SUPPLY: u64 = 10_000_000_000 * 1_000_000_000;
+    const MAX_VALIDATORS: u64 = 50;
 
     /// The Storage struct holds all stake for the LST.
     public struct Storage has store {
@@ -536,6 +538,8 @@ module liquid_staking::storage {
             total_sui_amount: 0,
             extra_fields: bag::new(ctx)
         });
+
+        assert!(self.validator_infos.length() <= MAX_VALIDATORS, ETooManyValidators);
 
         i
     }
