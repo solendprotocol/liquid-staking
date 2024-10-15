@@ -12,6 +12,7 @@ module liquid_staking::storage_tests {
     use sui::balance::{Self};
     use liquid_staking::storage::{new};
     use sui::sui::SUI;
+    use std::macros::do;
 
     #[test_only]
     fun setup_sui_system(scenario: &mut Scenario, stakes: vector<u64>) {
@@ -1127,4 +1128,33 @@ module liquid_staking::storage_tests {
         
         scenario.end();
     }
-}
+
+    #[test]
+    #[expected_failure(abort_code = 0, location = liquid_staking::storage)]
+    fun test_too_many_validators() {
+        let mut scenario = test_scenario::begin(@0x0);
+
+        let mut storage = new(scenario.ctx());
+
+        let mut validator_initial_stakes = vector::empty();
+        51u64.do!(|_| {
+            validator_initial_stakes.push_back(100);
+        });
+
+        setup_sui_system(&mut scenario, validator_initial_stakes);
+        scenario.next_tx(@0x0);
+
+        51u64.do!(|i| {
+            let stake = stake_with(i, 100, &mut scenario);
+
+            let mut system_state = scenario.take_shared<SuiSystemState>();
+            storage.join_stake(&mut system_state, stake, scenario.ctx());
+            test_scenario::return_shared(system_state);
+
+            scenario.next_tx(@0x0);
+        });
+
+        sui::test_utils::destroy(storage);
+        scenario.end();
+    }
+}   
