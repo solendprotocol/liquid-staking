@@ -19,6 +19,7 @@ module liquid_staking::liquid_staking {
     const EInvalidLstCreation: u64 = 0;
     const EMintInvariantViolated: u64 = 1;
     const ERedeemInvariantViolated: u64 = 2;
+    const EValidatorNotFound: u64 = 3;
 
     /* Constants */
     const CURRENT_VERSION: u16 = 1;
@@ -322,11 +323,14 @@ module liquid_staking::liquid_staking {
         self: &mut LiquidStakingInfo<P>,
         _: &AdminCap<P>,
         system_state: &mut SuiSystemState,
-        validator_index: u64,
+        validator_address: address,
         max_sui_amount: u64,
         ctx: &mut TxContext
     ): u64 {
         self.refresh(system_state, ctx);
+
+        let validator_index = self.storage.find_validator_index_by_address(validator_address);
+        assert!(validator_index < self.storage.validators().length(), EValidatorNotFound);
 
         let sui_amount = self.storage.unstake_approx_n_sui_from_validator(
             system_state,

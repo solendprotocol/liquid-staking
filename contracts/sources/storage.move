@@ -95,6 +95,19 @@ module liquid_staking::storage {
         self.total_sui_amount
     }
 
+    public(package) fun find_validator_index_by_address(self: &Storage, validator_address: address): u64 {
+        let mut i = 0;
+        while (i < self.validator_infos.length()) {
+            if (self.validator_infos[i].validator_address == validator_address) {
+                return i
+            };
+
+            i = i + 1;
+        };
+
+        i
+    }
+
     fun is_empty(self: &ValidatorInfo): bool {
         self.active_stake.is_none() && self.inactive_stake.is_none() && self.total_sui_amount == 0
     }

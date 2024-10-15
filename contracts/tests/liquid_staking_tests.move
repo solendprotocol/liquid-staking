@@ -364,7 +364,7 @@ module liquid_staking::liquid_staking_tests {
         lst_info.decrease_validator_stake(
             &admin_cap, 
             &mut system_state, 
-            1,
+            @0x1,
             40 * MIST_PER_SUI, 
             scenario.ctx()
         );
@@ -692,7 +692,7 @@ module liquid_staking::liquid_staking_tests {
         let unstaked_amount = lst_info.decrease_validator_stake(
             &admin_cap,
             &mut system_state,
-            0,
+            @0x0,
             unstake_amount,
             scenario.ctx()
         );
