@@ -228,7 +228,8 @@ module liquid_staking::liquid_staking {
         // invariant: lst_out / sui_in <= old_lst_supply / old_sui_supply
         // -> lst_out * old_sui_supply <= sui_in * old_lst_supply
         assert!(
-            (lst.value() as u128) * old_sui_supply <= (sui_balance.value() as u128) * old_lst_supply,
+            ((lst.value() as u128) * old_sui_supply <= (sui_balance.value() as u128) * old_lst_supply)
+            || (old_sui_supply > 0 && old_lst_supply == 0), // special case
             EMintInvariantViolated
         );
 
