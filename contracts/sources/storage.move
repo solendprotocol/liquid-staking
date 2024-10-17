@@ -7,6 +7,7 @@ module liquid_staking::storage {
     use sui::bag::{Self, Bag};
 
     /* Errors */
+    const ENotEnoughSuiInSuiPool: u64 = 0;
 
     /* Constants */
     const MIN_STAKE_THRESHOLD: u64 = 1_000_000_000;
@@ -424,6 +425,7 @@ module liquid_staking::storage {
             };
         };
 
+        assert!(self.sui_pool.value() >= max_sui_amount_out, ENotEnoughSuiInSuiPool);
         self.split_from_sui_pool(max_sui_amount_out)
     }
 

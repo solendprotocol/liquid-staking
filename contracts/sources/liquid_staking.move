@@ -20,6 +20,7 @@ module liquid_staking::liquid_staking {
     const EMintInvariantViolated: u64 = 1;
     const ERedeemInvariantViolated: u64 = 2;
     const EValidatorNotFound: u64 = 3;
+    const EZeroLstSupply: u64 = 4;
 
     /* Constants */
     const CURRENT_VERSION: u16 = 1;
@@ -460,7 +461,8 @@ module liquid_staking::liquid_staking {
         let total_sui_supply = self.total_sui_supply();
         let total_lst_supply = self.total_lst_supply();
 
-        // div by zero case should never happen
+        assert!(total_lst_supply > 0, EZeroLstSupply);
+
         let sui_amount = (total_sui_supply as u128)
             * (lst_amount as u128) 
             / (total_lst_supply as u128);
