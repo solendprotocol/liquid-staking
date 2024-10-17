@@ -159,6 +159,16 @@ module liquid_staking::liquid_staking {
         storage.join_to_sui_pool(sui.into_balance());
 
         assert!(lst_treasury_cap.total_supply() > 0 && storage.total_sui_supply() > 0, EInvalidLstCreation);
+
+        // make sure the lst ratio is in a sane range:
+        let total_sui_supply = (storage.total_sui_supply() as u128);
+        let total_lst_supply = (lst_treasury_cap.total_supply() as u128);
+        assert!(
+            (total_sui_supply * 2 >= total_lst_supply) // total_sui_supply / total_lst_supply >= 0.5
+            && (total_sui_supply <= 2 * total_lst_supply), // total_sui_supply / total_lst_supply <= 2
+            EInvalidLstCreation
+        );
+
         create_lst_with_storage(
             fee_config,
             lst_treasury_cap,
