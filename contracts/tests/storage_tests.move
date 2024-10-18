@@ -281,6 +281,66 @@ module liquid_staking::storage_tests {
         scenario.end();
     }
 
+    #[test]
+    #[expected_failure(abort_code = 1, location = liquid_staking::storage)]
+    fun test_join_inactive_stake_from_non_active_validator() {
+        let mut scenario = test_scenario::begin(@0x0);
+
+        setup_sui_system(&mut scenario, vector[100, 100]);
+
+        let staked_sui_1 = stake_with(1, 100, &mut scenario);
+
+        scenario.next_tx(@0x1);
+        let mut system_state = scenario.take_shared<SuiSystemState>();
+        system_state.request_remove_validator(scenario.ctx());
+        test_scenario::return_shared(system_state);
+
+        advance_epoch_with_reward_amounts(0, 0, &mut scenario);
+
+        let mut system_state = scenario.take_shared<SuiSystemState>();
+        assert!(!system_state.active_validator_addresses().contains(&@0x1), 0);
+
+
+        let mut storage = new(scenario.ctx());
+        storage.join_stake(&mut system_state, staked_sui_1, scenario.ctx());
+
+        test_scenario::return_shared(system_state);
+        sui::test_utils::destroy(storage);
+        
+        scenario.end();
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 1, location = liquid_staking::storage)]
+    fun test_join_active_stake_from_non_active_validator() {
+        let mut scenario = test_scenario::begin(@0x0);
+
+        setup_sui_system(&mut scenario, vector[100, 100]);
+
+        let active_staked_sui_1 = stake_with(0, 100, &mut scenario);
+
+        advance_epoch_with_reward_amounts(0, 0, &mut scenario);
+        advance_epoch_with_reward_amounts(0, 300, &mut scenario);
+
+        // mark validator as inactive
+        scenario.next_tx(@0x0);
+        let mut system_state = scenario.take_shared<SuiSystemState>();
+        system_state.request_remove_validator(scenario.ctx());
+        test_scenario::return_shared(system_state);
+
+        advance_epoch_with_reward_amounts(0, 0, &mut scenario);
+
+        let mut system_state = scenario.take_shared<SuiSystemState>();
+        let mut storage = new(scenario.ctx());
+        assert!(storage.total_sui_supply() == 0, 0);
+
+        storage.join_stake(&mut system_state, active_staked_sui_1, scenario.ctx());
+
+        test_scenario::return_shared(system_state);
+        sui::test_utils::destroy(storage);
+        
+        scenario.end();
+    }
 
     #[test]
     fun test_join_stake_multiple_validators() {

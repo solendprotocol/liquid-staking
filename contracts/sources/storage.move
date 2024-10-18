@@ -8,6 +8,7 @@ module liquid_staking::storage {
 
     /* Errors */
     const ENotEnoughSuiInSuiPool: u64 = 0;
+    const ENotActiveValidator: u64 = 1;
 
     /* Constants */
     const MIN_STAKE_THRESHOLD: u64 = 1_000_000_000;
@@ -507,6 +508,12 @@ module liquid_staking::storage {
         };
 
         let validator_address = system_state.validator_address_by_pool_id(&staking_pool_id);
+        let active_validator_addresses = system_state.active_validator_addresses();
+        assert!(
+            active_validator_addresses.contains(&validator_address),
+            ENotActiveValidator
+        );
+
         let exchange_rates = system_state.pool_exchange_rates(&staking_pool_id);
         let latest_exchange_rate = exchange_rates.borrow(ctx.epoch());
 
