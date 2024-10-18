@@ -375,7 +375,7 @@ module liquid_staking::storage {
         let target_unstake_sui_amount = max(target_unstake_sui_amount, MIN_STAKE_THRESHOLD);
 
         let staked_sui_amount = validator_info.inactive_stake.borrow().staked_sui_amount();
-        let staked_sui = if (staked_sui_amount <= target_unstake_sui_amount + MIN_STAKE_THRESHOLD) {
+        let staked_sui = if (staked_sui_amount < target_unstake_sui_amount + MIN_STAKE_THRESHOLD) {
             self.take_from_inactive_stake(validator_index)
         } 
         else {
