@@ -21,6 +21,7 @@ module liquid_staking::liquid_staking {
     const ERedeemInvariantViolated: u64 = 2;
     const EValidatorNotFound: u64 = 3;
     const EZeroLstSupply: u64 = 4;
+    const EZeroLstMinted: u64 = 5;
 
     /* Constants */
     const CURRENT_VERSION: u16 = 1;
@@ -165,7 +166,7 @@ module liquid_staking::liquid_staking {
         let total_sui_supply = (storage.total_sui_supply() as u128);
         let total_lst_supply = (lst_treasury_cap.total_supply() as u128);
         assert!(
-            (total_sui_supply * 2 >= total_lst_supply) // total_sui_supply / total_lst_supply >= 0.5
+            (total_sui_supply >= total_lst_supply)
             && (total_sui_supply <= 2 * total_lst_supply), // total_sui_supply / total_lst_supply <= 2
             EInvalidLstCreation
         );
@@ -235,6 +236,7 @@ module liquid_staking::liquid_staking {
         });
 
         let lst = self.lst_treasury_cap.mint(lst_mint_amount, ctx);
+        assert!(lst.value() > 0, EZeroLstMinted);
 
         // invariant: lst_out / sui_in <= old_lst_supply / old_sui_supply
         // -> lst_out * old_sui_supply <= sui_in * old_lst_supply

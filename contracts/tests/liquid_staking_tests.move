@@ -92,7 +92,7 @@ module liquid_staking::liquid_staking_tests {
 
         // Create a treasury cap with non-zero coins
         let mut treasury_cap = coin::create_treasury_cap_for_testing<TEST>(scenario.ctx());
-        let coins = treasury_cap.mint(400 * MIST_PER_SUI, scenario.ctx());
+        let coins = treasury_cap.mint(200 * MIST_PER_SUI, scenario.ctx());
 
         let (admin_cap, lst_info) = create_lst_with_stake<TEST>(
             &mut system_state,
@@ -106,7 +106,7 @@ module liquid_staking::liquid_staking_tests {
             scenario.ctx()
         );
 
-        assert!(lst_info.total_lst_supply() == 400 * MIST_PER_SUI, 0);
+        assert!(lst_info.total_lst_supply() == 200 * MIST_PER_SUI, 0);
         assert!(lst_info.storage().total_sui_supply() == 200 * MIST_PER_SUI, 0);
 
         test_scenario::return_shared(system_state);
@@ -237,7 +237,7 @@ module liquid_staking::liquid_staking_tests {
                 .to_fee_config(),
             treasury_cap,
             vector::empty(),
-            coin::mint_for_testing(500  * MIST_PER_SUI - 1, scenario.ctx()),
+            coin::mint_for_testing(1000  * MIST_PER_SUI - 1, scenario.ctx()),
             scenario.ctx()
         );
 
@@ -734,7 +734,7 @@ module liquid_staking::liquid_staking_tests {
 
         let staked_sui = stake_with(0, std::u64::max(mint_amount / MIST_PER_SUI, 1), &mut scenario);
         let mut treasury_cap = coin::create_treasury_cap_for_testing<TEST>(scenario.ctx());
-        let lst = treasury_cap.mint(mint_amount, scenario.ctx());
+        let lst = treasury_cap.mint(mint_amount / MIST_PER_SUI * MIST_PER_SUI, scenario.ctx());
 
         advance_epoch_with_reward_amounts(0, 0, &mut scenario);
 
