@@ -12,6 +12,7 @@ module liquid_staking::storage {
 
     /* Constants */
     const MIN_STAKE_THRESHOLD: u64 = 1_000_000_000;
+    const MAX_SUI_SUPPLY: u64 = 10_000_000_000 * 1_000_000_000;
 
     /// The Storage struct holds all stake for the LST.
     public struct Storage has store {
@@ -131,32 +132,41 @@ module liquid_staking::storage {
             return false
         };
 
+        let active_validator_addresses = system_state.active_validator_addresses();
+
         let mut i = self.validator_infos.length();
         while (i > 0) {
             i = i - 1;
 
-            // update pool token exchange rates
-            let validator_info = &mut self.validator_infos[i];
-
-            let exchange_rates = system_state.pool_exchange_rates(&validator_info.staking_pool_id);
-            let latest_exchange_rate = exchange_rates.borrow(ctx.epoch());
-
-            validator_info.exchange_rate = *latest_exchange_rate;
-
-            if (validator_info.inactive_stake.is_some()) {
-                let inactive_stake = self.take_from_inactive_stake(i);
-                let fungible_staked_sui = system_state.convert_to_fungible_staked_sui(inactive_stake, ctx);
-                self.join_fungible_staked_sui_to_validator(i, fungible_staked_sui);
+            // if validator is inactive, withdraw all stake.
+            if (!active_validator_addresses.contains(&self.validator_infos[i].validator_address)) {
+                // technically this is using a stale exchange rate, but it doesn't matter because we're unstaking everything.
+                // this is done before fetching the exchange rate because i don't want the function to abort if an epoch is skipped.
+                self.unstake_approx_n_sui_from_validator(system_state, i, MAX_SUI_SUPPLY, ctx);
             };
-
-            refresh_validator_info(self, i);
 
             if (self.validator_infos[i].is_empty()) {
                 let ValidatorInfo { active_stake, inactive_stake, extra_fields, .. } = self.validator_infos.remove(i);
                 active_stake.destroy_none();
                 inactive_stake.destroy_none();
                 extra_fields.destroy_empty();
+
+                continue
             };
+
+            // update pool token exchange rates
+            let exchange_rates = system_state.pool_exchange_rates(&self.validator_infos[i].staking_pool_id);
+            let latest_exchange_rate = exchange_rates.borrow(ctx.epoch());
+
+            self.validator_infos[i].exchange_rate = *latest_exchange_rate;
+            self.refresh_validator_info(i);
+
+            if (self.validator_infos[i].inactive_stake.is_some()) {
+                let inactive_stake = self.take_from_inactive_stake(i);
+                let fungible_staked_sui = system_state.convert_to_fungible_staked_sui(inactive_stake, ctx);
+                self.join_fungible_staked_sui_to_validator(i, fungible_staked_sui);
+            };
+
         };
 
         self.last_refresh_epoch = ctx.epoch();
