@@ -9,6 +9,7 @@ import { fromBase64 } from "@mysten/sui/utils";
 import { program } from "commander";
 import * as sdk from "./functions";
 import { PACKAGE_ID } from "./_generated/liquid_staking";
+import { LstClient } from "./functions";
 
 const LIQUID_STAKING_INFO = {
   id: "0xdae271405d47f04ab6c824d3b362b7375844ec987a2627845af715fdcd835795",
@@ -23,10 +24,11 @@ const keypair = Ed25519Keypair.fromSecretKey(
 
 async function mint(options) {
   let client = new SuiClient({ url: RPC_URL });
+  let lstClient = await LstClient.initialize(client, LIQUID_STAKING_INFO);
 
   let tx = new Transaction();
   let [sui] = tx.splitCoins(tx.gas, [BigInt(options.amount)]);
-  let rSui = sdk.mint(tx, LIQUID_STAKING_INFO, sui);
+  let rSui = lstClient.mint(tx, sui);
   tx.transferObjects([rSui], keypair.toSuiAddress());
 
   let txResponse = await client.signAndExecuteTransaction({
@@ -52,6 +54,7 @@ async function redeem(options) {
   });
 
   let tx = new Transaction();
+  let lstClient = await LstClient.initialize(client, LIQUID_STAKING_INFO);
 
   if (lstCoins.data.length > 1) {
     tx.mergeCoins(
@@ -63,7 +66,7 @@ async function redeem(options) {
   let [lst] = tx.splitCoins(lstCoins.data[0].coinObjectId, [
     BigInt(options.amount),
   ]);
-  let sui = sdk.redeemLst(tx, LIQUID_STAKING_INFO, lst);
+  let sui = lstClient.redeemLst(tx, lst);
 
   tx.transferObjects([sui], keypair.toSuiAddress());
 
@@ -82,21 +85,12 @@ async function redeem(options) {
 
 async function increaseValidatorStake(options) {
   let client = new SuiClient({ url: RPC_URL });
-
-  let adminCap = (
-    await client.getOwnedObjects({
-      owner: keypair.toSuiAddress(),
-      filter: {
-        StructType: `${PACKAGE_ID}::liquid_staking::AdminCap<${LIQUID_STAKING_INFO.type}>`,
-      },
-    })
-  ).data[0];
+  let lstClient = await LstClient.initialize(client, LIQUID_STAKING_INFO);
 
   let tx = new Transaction();
-  sdk.increaseValidatorStake(
+  lstClient.increaseValidatorStake(
     tx,
-    LIQUID_STAKING_INFO,
-    adminCap.data.objectId,
+    await lstClient.getAdminCapId(keypair.toSuiAddress()),
     options.validatorAddress,
     options.amount
   );
@@ -116,21 +110,12 @@ async function increaseValidatorStake(options) {
 
 async function decreaseValidatorStake(options) {
   let client = new SuiClient({ url: RPC_URL });
-
-  let adminCap = (
-    await client.getOwnedObjects({
-      owner: keypair.toSuiAddress(),
-      filter: {
-        StructType: `${PACKAGE_ID}::liquid_staking::AdminCap<${LIQUID_STAKING_INFO.type}>`,
-      },
-    })
-  ).data[0];
+  let lstClient = await LstClient.initialize(client, LIQUID_STAKING_INFO);
 
   let tx = new Transaction();
-  sdk.decreaseValidatorStake(
+  lstClient.decreaseValidatorStake(
     tx,
-    LIQUID_STAKING_INFO,
-    adminCap.data.objectId,
+    await lstClient.getAdminCapId(keypair.toSuiAddress()),
     options.validatorIndex,
     options.amount
   );
