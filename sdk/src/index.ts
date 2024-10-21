@@ -11,11 +11,11 @@ import * as sdk from "./functions";
 import { PACKAGE_ID } from "./_generated/liquid_staking";
 
 const LIQUID_STAKING_INFO = {
-  id: "0x4b7b661cb29e49557cd8118d34357b2d09e2e959c37188143feac31a9f2f3e79",
-  type: "0x1e20267bbc14a1c19399473165685a409f36f161583650e09981ef936560ee44::ripleys::RIPLEYS",
+  id: "0xdae271405d47f04ab6c824d3b362b7375844ec987a2627845af715fdcd835795",
+  type: "0xba2a31b3b21776d859c9fdfe797f52b069fe8fe0961605ab093ca4eb437d2632::ripleys::RIPLEYS",
 };
 
-const RPC_URL = "https://fullnode.testnet.sui.io";
+const RPC_URL = "https://fullnode.mainnet.sui.io";
 
 const keypair = Ed25519Keypair.fromSecretKey(
   fromBase64(process.env.SUI_SECRET_KEY!)

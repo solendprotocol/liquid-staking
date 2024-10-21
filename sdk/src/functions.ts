@@ -69,14 +69,14 @@ export function decreaseValidatorStake(
   tx: Transaction, 
   info: LiquidStakingObjectInfo, 
   adminCapId: TransactionObjectInput,
-  validatorIndex: number,
+  validatorAddress: string,
   maxSuiAmount: number
 ) {
   generated.decreaseValidatorStake(tx, info.type, {
     self: info.id,
     adminCap: adminCapId,
     systemState: SUI_SYSTEM_STATE_ID,
-    validatorIndex: BigInt(validatorIndex),
+    validatorAddress,
     maxSuiAmount: BigInt(maxSuiAmount),
   });
 }
@@ -142,36 +142,3 @@ export function updateFees(
     feeConfig,
   }); 
 }
-
-// TODO: actually make this usable
-// async function createNewLst(client: SuiClient) {
-//   let tx = new Transaction();
-
-
-//   let [feeConfigBuilder] = newBuilder(tx);
-//   let [feeConfig] = toFeeConfig(tx, feeConfigBuilder);
-
-//   let liquidStakingInfoType = "0x1e20267bbc14a1c19399473165685a409f36f161583650e09981ef936560ee44::ripleys::RIPLEYS";
-//   let [adminCap, liquidStakingInfo] = createLst(
-//     tx,
-//     liquidStakingInfoType,
-//     {
-//       feeConfig,
-//       lstTreasuryCap: "0x5ebf29a2e252f406edf1c141447be15c886dbf3297585c880f8f7efd82c347c0",
-//     }
-//   );
-
-//   tx.moveCall({
-//     target: `0x2::transfer::public_share_object`,
-//     typeArguments: [`${LiquidStakingInfo.$typeName}<${liquidStakingInfoType}>}`],
-//     arguments: [liquidStakingInfo],
-//   });
-
-//   tx.transferObjects([adminCap], keypair.toSuiAddress());
-
-
-//   let txResponse = await client.signAndExecuteTransaction({
-//     transaction: tx,
-//     signer: keypair,
-//   });
-// }

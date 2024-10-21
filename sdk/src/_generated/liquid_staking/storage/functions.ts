@@ -91,6 +91,21 @@ export function changeValidatorPriority(
   });
 }
 
+export interface FindValidatorIndexByAddressArgs {
+  self: TransactionObjectInput;
+  validatorAddress: string | TransactionArgument;
+}
+
+export function findValidatorIndexByAddress(
+  tx: Transaction,
+  args: FindValidatorIndexByAddressArgs,
+) {
+  return tx.moveCall({
+    target: `${PUBLISHED_AT}::storage::find_validator_index_by_address`,
+    arguments: [obj(tx, args.self), pure(tx, args.validatorAddress, `address`)],
+  });
+}
+
 export interface GetOrAddValidatorIndexByStakingPoolIdMutArgs {
   self: TransactionObjectInput;
   systemState: TransactionObjectInput;
