@@ -17,6 +17,7 @@ export interface LiquidStakingObjectInfo {
 }
 
 const SUI_SYSTEM_STATE_ID = "0x0000000000000000000000000000000000000000000000000000000000000005";
+const SUILEND_VALIDATOR_ADDRESS = "0xce8e537664ba5d1d5a6a857b17bd142097138706281882be6805e17065ecde89";
 
 // user functions
 export async function fetchLiquidStakingInfo(info: LiquidStakingObjectInfo, client: SuiClient): Promise<LiquidStakingInfo<any>> {
@@ -121,17 +122,17 @@ export function updateFees(
 
   if (feeConfigArgs.redeemFeeBps != null) {
     console.log(`Setting redeem fee bps to ${feeConfigArgs.redeemFeeBps}`);
-    setRedeemFeeBps(tx, {
+    builder = setRedeemFeeBps(tx, {
       self: builder,
       fee: BigInt(feeConfigArgs.redeemFeeBps),
-    });
+    })[0];
   }
 
   if (feeConfigArgs.spreadFee != null) {
-    setSpreadFeeBps(tx, {
+    builder = setSpreadFeeBps(tx, {
       self: builder,
       fee: BigInt(feeConfigArgs.spreadFee),
-    });
+    })[0];
   } 
 
   let [feeConfig] = toFeeConfig(tx, builder);
@@ -141,4 +142,11 @@ export function updateFees(
     adminCap: adminCapId,
     feeConfig,
   }); 
+}
+
+// only works for sSui
+export async function getSpringSuiApy(client: SuiClient) {
+  let res = await client.getValidatorsApy();
+  let validatorApy = res.apys.find((apy) => apy.address == SUILEND_VALIDATOR_ADDRESS);
+  return validatorApy?.apy;
 }

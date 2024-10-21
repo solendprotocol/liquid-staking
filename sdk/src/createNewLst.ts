@@ -10,10 +10,17 @@ import { newBuilder, setRedeemFeeBps, setSpreadFeeBps, setSuiMintFeeBps, toFeeCo
 import { fromBase64 } from "@mysten/sui/utils";
 import { LiquidStakingInfo } from "./_generated/liquid_staking/liquid-staking/structs";
 import { phantom } from "./_generated/_framework/reified";
+import { fetchLiquidStakingInfo, getSpringSuiApy, increaseValidatorStake } from "./functions";
+import { PACKAGE_ID } from "./_generated/liquid_staking";
 
 const keypair = Ed25519Keypair.fromSecretKey(
   fromBase64(process.env.SUI_SECRET_KEY!)
 );
+
+const LIQUID_STAKING_INFO = {
+  id: "0xdae271405d47f04ab6c824d3b362b7375844ec987a2627845af715fdcd835795",
+  type: "0xba2a31b3b21776d859c9fdfe797f52b069fe8fe0961605ab093ca4eb437d2632::ripleys::RIPLEYS",
+};
 
 async function createNewLst() {
   let client = new SuiClient({ url: "https://fullnode.mainnet.sui.io" });
@@ -48,4 +55,39 @@ async function createNewLst() {
   });
 }
 
-createNewLst();
+async function getValidatorApys() {
+  let client = new SuiClient({ url: "https://fullnode.mainnet.sui.io" });
+
+  let res = await client.getValidatorsApy();
+
+  let validatorAddresses = res.apys.map((apy) => apy.address);
+  let adminCap = (
+    await client.getOwnedObjects({
+      owner: keypair.toSuiAddress(),
+      filter: {
+        StructType: `${PACKAGE_ID}::liquid_staking::AdminCap<${LIQUID_STAKING_INFO.type}>`,
+      },
+    })
+  ).data[0];
+
+  for (let i = 0; i < 50; i++) {
+    let tx = new Transaction();
+    increaseValidatorStake(tx, 
+      LIQUID_STAKING_INFO,
+      adminCap.data.objectId,
+      validatorAddresses[i],
+      1_000_000_000
+    );
+
+    let txResponse = await client.signAndExecuteTransaction({
+      transaction: tx,
+      signer: keypair,
+    });
+    console.log(txResponse);
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+
+}
+
+// createNewLst();
+getValidatorApys();
