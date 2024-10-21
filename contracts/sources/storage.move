@@ -9,7 +9,8 @@ module liquid_staking::storage {
     /* Errors */
     const ENotEnoughSuiInSuiPool: u64 = 0;
     const ENotActiveValidator: u64 = 1;
-    const ETooManyValidators: u64 = 0;
+    const ETooManyValidators: u64 = 2;
+    const EValidatorAlreadyExists: u64 = 3;
 
     /* Constants */
     const MIN_STAKE_THRESHOLD: u64 = 1_000_000_000;
@@ -510,16 +511,25 @@ module liquid_staking::storage {
         staking_pool_id: ID,
         ctx: &mut TxContext
     ): u64 {
+        let mut current_validator_addresses = vector[];
+
         let mut i = 0;
         while (i < self.validator_infos.length()) {
             if (self.validator_infos[i].staking_pool_id == staking_pool_id) {
                 return i
             };
 
+            current_validator_addresses.push_back(self.validator_infos[i].validator_address);
             i = i + 1;
         };
 
         let validator_address = system_state.validator_address_by_pool_id(&staking_pool_id);
+
+        assert!(
+            !current_validator_addresses.contains(&validator_address),
+            EValidatorAlreadyExists
+        );
+
         let active_validator_addresses = system_state.active_validator_addresses();
         assert!(
             active_validator_addresses.contains(&validator_address),

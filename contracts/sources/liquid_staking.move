@@ -227,6 +227,7 @@ module liquid_staking::liquid_staking {
         self.fees.join(sui_balance.split(mint_fee_amount));
         
         let lst_mint_amount = self.sui_amount_to_lst_amount(sui_balance.value());
+        assert!(lst_mint_amount > 0, EZeroLstMinted);
 
         emit_event(MintEvent {
             typename: type_name::get<P>(),
@@ -236,7 +237,6 @@ module liquid_staking::liquid_staking {
         });
 
         let lst = self.lst_treasury_cap.mint(lst_mint_amount, ctx);
-        assert!(lst.value() > 0, EZeroLstMinted);
 
         // invariant: lst_out / sui_in <= old_lst_supply / old_sui_supply
         // -> lst_out * old_sui_supply <= sui_in * old_lst_supply
@@ -338,7 +338,7 @@ module liquid_staking::liquid_staking {
         _: &AdminCap<P>,
         system_state: &mut SuiSystemState,
         validator_address: address,
-        max_sui_amount: u64,
+        target_unstake_sui_amount: u64,
         ctx: &mut TxContext
     ): u64 {
         self.refresh(system_state, ctx);
@@ -349,7 +349,7 @@ module liquid_staking::liquid_staking {
         let sui_amount = self.storage.unstake_approx_n_sui_from_validator(
             system_state,
             validator_index,
-            max_sui_amount,
+            target_unstake_sui_amount,
             ctx
         );
 

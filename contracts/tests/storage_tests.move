@@ -1224,7 +1224,7 @@ module liquid_staking::storage_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 0, location = liquid_staking::storage)]
+    #[expected_failure(abort_code = 2, location = liquid_staking::storage)]
     fun test_too_many_validators() {
         let mut scenario = test_scenario::begin(@0x0);
 
