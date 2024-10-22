@@ -10,7 +10,7 @@ import { newBuilder, setRedeemFeeBps, setSpreadFeeBps, setSuiMintFeeBps, toFeeCo
 import { fromBase64 } from "@mysten/sui/utils";
 import { LiquidStakingInfo } from "./_generated/liquid_staking/liquid-staking/structs";
 import { phantom } from "./_generated/_framework/reified";
-import { fetchLiquidStakingInfo, getSpringSuiApy, increaseValidatorStake } from "./functions";
+import { fetchLiquidStakingInfo, getSpringSuiApy, LstClient } from "./functions";
 import { PACKAGE_ID } from "./_generated/liquid_staking";
 
 const keypair = Ed25519Keypair.fromSecretKey(
@@ -61,20 +61,14 @@ async function getValidatorApys() {
   let res = await client.getValidatorsApy();
 
   let validatorAddresses = res.apys.map((apy) => apy.address);
-  let adminCap = (
-    await client.getOwnedObjects({
-      owner: keypair.toSuiAddress(),
-      filter: {
-        StructType: `${PACKAGE_ID}::liquid_staking::AdminCap<${LIQUID_STAKING_INFO.type}>`,
-      },
-    })
-  ).data[0];
+  let lstClient = await LstClient.initialize(client, LIQUID_STAKING_INFO);
+  let adminCapId = await lstClient.getAdminCapId(keypair.toSuiAddress());
 
   for (let i = 0; i < 50; i++) {
     let tx = new Transaction();
-    increaseValidatorStake(tx, 
-      LIQUID_STAKING_INFO,
-      adminCap.data.objectId,
+    lstClient.increaseValidatorStake(
+      tx, 
+      adminCapId,
       validatorAddresses[i],
       1_000_000_000
     );
