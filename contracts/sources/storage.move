@@ -142,6 +142,7 @@ module liquid_staking::storage {
             i = i - 1;
 
             // if validator is inactive, withdraw all stake.
+            // TODO: replace with system_state.is_active_staking_pool once it's live.
             if (!active_validator_addresses.contains(&self.validator_infos[i].validator_address)) {
                 // technically this is using a stale exchange rate, but it doesn't matter because we're unstaking everything.
                 // this is done before fetching the exchange rate because i don't want the function to abort if an epoch is skipped.
@@ -158,10 +159,16 @@ module liquid_staking::storage {
             };
 
             // update pool token exchange rates
-            let exchange_rates = system_state.pool_exchange_rates(&self.validator_infos[i].staking_pool_id);
-            let latest_exchange_rate = exchange_rates.borrow(ctx.epoch());
+            let latest_exchange_rate_opt = self.get_latest_exchange_rate(
+                &self.validator_infos[i].staking_pool_id,
+                system_state,
+                ctx
+            );
 
-            self.validator_infos[i].exchange_rate = *latest_exchange_rate;
+            if (latest_exchange_rate_opt.is_some()) {
+                self.validator_infos[i].exchange_rate = *latest_exchange_rate_opt.borrow();
+            };
+
             self.refresh_validator_info(i);
 
             if (self.validator_infos[i].inactive_stake.is_some()) {
@@ -174,6 +181,31 @@ module liquid_staking::storage {
 
         self.last_refresh_epoch = ctx.epoch();
         true
+    }
+
+    // finds the latest exchange rate by searching backwards from current epoch 
+    // to the storage's last refresh epoch.
+    // this may return none in the case where the staking pool is inactive or 
+    // if sui system is currently in safe mode. In both these cases, the storage
+    // object has the latest exchange rate already.
+    fun get_latest_exchange_rate(
+        self: &Storage,
+        staking_pool_id: &ID,
+        system_state: &mut SuiSystemState,
+        ctx: &TxContext
+    ): Option<PoolTokenExchangeRate> {
+        let exchange_rates = system_state.pool_exchange_rates(staking_pool_id);
+
+        let mut cur_epoch = ctx.epoch();
+        while (cur_epoch > self.last_refresh_epoch) {
+            if (exchange_rates.contains(cur_epoch)) {
+                return option::some(*exchange_rates.borrow(cur_epoch))
+            };
+
+            cur_epoch = cur_epoch - 1;
+        };
+
+        option::none()
     }
 
     /// Update the total sui amount for the validator and modify the 

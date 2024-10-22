@@ -346,6 +346,76 @@ module liquid_staking::storage_tests {
     }
 
     #[test]
+    fun test_refresh_inactive_staking_pool_edge_case() {
+        let mut scenario = test_scenario::begin(@0x0);
+
+        setup_sui_system(&mut scenario, vector[100, 100]);
+
+        let staked_sui_1 = stake_with(1, 100, &mut scenario);
+
+        let mut system_state = scenario.take_shared<SuiSystemState>();
+        let mut storage = new(scenario.ctx());
+        storage.join_stake(&mut system_state, staked_sui_1, scenario.ctx());
+        test_scenario::return_shared(system_state);
+
+        // remove validator
+        scenario.next_tx(@0x1);
+        let mut system_state = scenario.take_shared<SuiSystemState>();
+        system_state.request_remove_validator(scenario.ctx());
+        test_scenario::return_shared(system_state);
+
+        advance_epoch_with_reward_amounts(0, 0, &mut scenario);
+        advance_epoch_with_reward_amounts(0, 0, &mut scenario);
+
+        let mut system_state = scenario.take_shared<SuiSystemState>();
+        assert!(!system_state.active_validator_addresses().contains(&@0x1), 0);
+        test_scenario::return_shared(system_state);
+
+        // readd with same address
+        scenario.next_tx(@0x1);
+        let mut system_state = scenario.take_shared<SuiSystemState>();
+        let pubkey = x"99f25ef61f8032b914636460982c5cc6f134ef1ddae76657f2cbfec1ebfc8d097374080df6fcf0dcb8bc4b0d8e0af5d80ebbff2b4c599f54f42d6312dfc314276078c1cc347ebbbec5198be258513f386b930d02c2749a803e2330955ebd1a10";
+        let pop = x"b01cc86f421beca7ab4cfca87c0799c4d038c199dd399fbec1924d4d4367866dba9e84d514710b91feb65316e4ceef43";
+        system_state.request_add_validator_candidate_for_testing(
+            pubkey,
+            vector[215, 64, 85, 185, 231, 116, 69, 151, 97, 79, 4, 183, 20, 70, 84, 51, 211, 162, 115, 221, 73, 241, 240, 171, 192, 25, 232, 106, 175, 162, 176, 43],
+            vector[148, 117, 212, 171, 44, 104, 167, 11, 177, 100, 4, 55, 17, 235, 117, 45, 117, 84, 159, 49, 14, 159, 239, 246, 237, 21, 83, 166, 112, 53, 62, 199],
+            pop,
+            b"ValidatorName2",
+            b"description2",
+            b"image_url2",
+            b"project_url2",
+            b"/ip4/127.0.0.2/tcp/80",
+            b"/ip4/127.0.0.2/udp/80",
+            b"/ip4/168.168.168.168/udp/80",
+            b"/ip4/168.168.168.168/udp/80",
+            1,
+            0,
+            scenario.ctx(),
+        );
+        test_scenario::return_shared(system_state);
+        
+        let staked_sui_2 = stake_with(1, 100, &mut scenario);
+
+        // 3. mark candidate as pending active validator
+        scenario.next_tx(@0x1);
+        let mut system_state = scenario.take_shared<SuiSystemState>();
+        system_state.request_add_validator(scenario.ctx());
+        test_scenario::return_shared(system_state);
+
+        advance_epoch_with_reward_amounts(0, 0, &mut scenario);
+
+        let mut system_state = scenario.take_shared<SuiSystemState>();
+        storage.refresh(&mut system_state, scenario.ctx());
+        test_scenario::return_shared(system_state);
+
+        sui::test_utils::destroy(storage);
+        sui::test_utils::destroy(staked_sui_2);
+        
+        scenario.end();
+    }
+
+    #[test]
     #[expected_failure(abort_code = 1, location = liquid_staking::storage)]
     fun test_join_active_stake_from_non_active_validator() {
         let mut scenario = test_scenario::begin(@0x0);
