@@ -2,7 +2,12 @@ module liquid_staking::fees {
     use sui::bag::{Self, Bag};
     use std::u64::max;
 
+    // Errors
     const EInvalidFeeConfig: u64 = 0;
+
+    // Constants
+    const MAX_BPS: u64 = 10_000;
+    const MAX_REDEEM_FEE_BPS: u64 = 500; // 5%
 
     public struct FeeConfig has store {
         sui_mint_fee_bps: u64,
@@ -127,12 +132,12 @@ module liquid_staking::fees {
     // This is because having a 0 fee LST is useful in certain cases where mint/redemption can only be done by 
     // a single party. It is up to the pool creator to ensure that the fees are set correctly.
     fun validate_fees(fees: &FeeConfig) {
-        assert!(fees.sui_mint_fee_bps <= 10_000, EInvalidFeeConfig);
-        assert!(fees.staked_sui_mint_fee_bps <= 10_000, EInvalidFeeConfig);
-        assert!(fees.redeem_fee_bps <= 10_000, EInvalidFeeConfig);
-        assert!(fees.staked_sui_redeem_fee_bps <= 10_000, EInvalidFeeConfig);
-        assert!(fees.spread_fee_bps <= 10_000, EInvalidFeeConfig);
-        assert!(fees.custom_redeem_fee_bps <= 10_000, EInvalidFeeConfig);
+        assert!(fees.sui_mint_fee_bps <= MAX_BPS, EInvalidFeeConfig);
+        assert!(fees.staked_sui_mint_fee_bps <= MAX_BPS, EInvalidFeeConfig);
+        assert!(fees.redeem_fee_bps <= MAX_REDEEM_FEE_BPS, EInvalidFeeConfig);
+        assert!(fees.staked_sui_redeem_fee_bps <= MAX_BPS, EInvalidFeeConfig);
+        assert!(fees.spread_fee_bps <= MAX_BPS, EInvalidFeeConfig);
+        assert!(fees.custom_redeem_fee_bps <= MAX_BPS, EInvalidFeeConfig);
     }
 
     public(package) fun calculate_mint_fee(self: &FeeConfig, sui_amount: u64): u64 {
@@ -161,7 +166,7 @@ module liquid_staking::fees {
         let fees = FeeConfig {
             sui_mint_fee_bps: 10_000,
             staked_sui_mint_fee_bps: 10_000,
-            redeem_fee_bps: 10_000,
+            redeem_fee_bps: 500,
             staked_sui_redeem_fee_bps: 10_000,
             spread_fee_bps: 10_000,
             custom_redeem_fee_bps: 10_000,

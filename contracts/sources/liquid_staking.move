@@ -20,6 +20,8 @@ module liquid_staking::liquid_staking {
     const EMintInvariantViolated: u64 = 1;
     const ERedeemInvariantViolated: u64 = 2;
     const EValidatorNotFound: u64 = 3;
+    const EZeroLstSupply: u64 = 4;
+    const EZeroLstMinted: u64 = 5;
 
     /* Constants */
     const CURRENT_VERSION: u16 = 1;
@@ -159,6 +161,16 @@ module liquid_staking::liquid_staking {
         storage.join_to_sui_pool(sui.into_balance());
 
         assert!(lst_treasury_cap.total_supply() > 0 && storage.total_sui_supply() > 0, EInvalidLstCreation);
+
+        // make sure the lst ratio is in a sane range:
+        let total_sui_supply = (storage.total_sui_supply() as u128);
+        let total_lst_supply = (lst_treasury_cap.total_supply() as u128);
+        assert!(
+            (total_sui_supply >= total_lst_supply)
+            && (total_sui_supply <= 2 * total_lst_supply), // total_sui_supply / total_lst_supply <= 2
+            EInvalidLstCreation
+        );
+
         create_lst_with_storage(
             fee_config,
             lst_treasury_cap,
@@ -215,6 +227,7 @@ module liquid_staking::liquid_staking {
         self.fees.join(sui_balance.split(mint_fee_amount));
         
         let lst_mint_amount = self.sui_amount_to_lst_amount(sui_balance.value());
+        assert!(lst_mint_amount > 0, EZeroLstMinted);
 
         emit_event(MintEvent {
             typename: type_name::get<P>(),
@@ -228,7 +241,8 @@ module liquid_staking::liquid_staking {
         // invariant: lst_out / sui_in <= old_lst_supply / old_sui_supply
         // -> lst_out * old_sui_supply <= sui_in * old_lst_supply
         assert!(
-            (lst.value() as u128) * old_sui_supply <= (sui_balance.value() as u128) * old_lst_supply,
+            ((lst.value() as u128) * old_sui_supply <= (sui_balance.value() as u128) * old_lst_supply)
+            || (old_sui_supply > 0 && old_lst_supply == 0), // special case
             EMintInvariantViolated
         );
 
@@ -324,7 +338,7 @@ module liquid_staking::liquid_staking {
         _: &AdminCap<P>,
         system_state: &mut SuiSystemState,
         validator_address: address,
-        max_sui_amount: u64,
+        target_unstake_sui_amount: u64,
         ctx: &mut TxContext
     ): u64 {
         self.refresh(system_state, ctx);
@@ -335,7 +349,7 @@ module liquid_staking::liquid_staking {
         let sui_amount = self.storage.unstake_approx_n_sui_from_validator(
             system_state,
             validator_index,
-            max_sui_amount,
+            target_unstake_sui_amount,
             ctx
         );
 
@@ -449,7 +463,8 @@ module liquid_staking::liquid_staking {
         let total_sui_supply = self.total_sui_supply();
         let total_lst_supply = self.total_lst_supply();
 
-        // div by zero case should never happen
+        assert!(total_lst_supply > 0, EZeroLstSupply);
+
         let sui_amount = (total_sui_supply as u128)
             * (lst_amount as u128) 
             / (total_lst_supply as u128);
