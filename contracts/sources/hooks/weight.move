@@ -6,6 +6,7 @@ module liquid_staking::weight {
     use sui::vec_map::{Self, VecMap};
     use sui::bag::{Self, Bag};
     use liquid_staking::version::{Self, Version};
+    use sui::package;
 
     /* Constants */
     const CURRENT_VERSION: u16 = 1;
@@ -21,6 +22,12 @@ module liquid_staking::weight {
 
     public struct WeightHookAdminCap<phantom P> has key, store {
         id: UID
+    }
+
+    public struct WEIGHT has drop {}
+
+    fun init(otw: WEIGHT, ctx: &mut TxContext) {
+        package::claim_and_keep(otw, ctx)
     }
 
     public fun new<P>(
