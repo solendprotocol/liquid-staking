@@ -201,7 +201,7 @@ export interface DecreaseValidatorStakeArgs {
   self: TransactionObjectInput;
   adminCap: TransactionObjectInput;
   systemState: TransactionObjectInput;
-  validatorIndex: bigint | TransactionArgument;
+  validatorAddress: string | TransactionArgument;
   maxSuiAmount: bigint | TransactionArgument;
 }
 
@@ -217,7 +217,7 @@ export function decreaseValidatorStake(
       obj(tx, args.self),
       obj(tx, args.adminCap),
       obj(tx, args.systemState),
-      pure(tx, args.validatorIndex, `u64`),
+      pure(tx, args.validatorAddress, `address`),
       pure(tx, args.maxSuiAmount, `u64`),
     ],
   });
@@ -246,6 +246,13 @@ export function increaseValidatorStake(
       pure(tx, args.validatorAddress, `address`),
       pure(tx, args.suiAmount, `u64`),
     ],
+  });
+}
+
+export function init(tx: Transaction, otw: TransactionObjectInput) {
+  return tx.moveCall({
+    target: `${PUBLISHED_AT}::liquid_staking::init`,
+    arguments: [obj(tx, otw)],
   });
 }
 

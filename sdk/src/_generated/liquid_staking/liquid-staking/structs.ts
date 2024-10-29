@@ -1,4 +1,5 @@
 import * as reified from "../../_framework/reified";
+import { TypeName } from "../../_dependencies/source/0x1/type-name/structs";
 import { Bag } from "../../_dependencies/source/0x2/bag/structs";
 import { Balance } from "../../_dependencies/source/0x2/balance/structs";
 import { TreasuryCap } from "../../_dependencies/source/0x2/coin/structs";
@@ -277,137 +278,122 @@ export class AdminCap<P extends PhantomTypeArgument> implements StructClass {
 
 export function isCollectFeesEvent(type: string): boolean {
   type = compressSuiType(type);
-  return type.startsWith(`${PKG_V1}::liquid_staking::CollectFeesEvent` + "<");
+  return type === `${PKG_V1}::liquid_staking::CollectFeesEvent`;
 }
 
-export interface CollectFeesEventFields<P extends PhantomTypeArgument> {
+export interface CollectFeesEventFields {
+  typename: ToField<TypeName>;
   amount: ToField<"u64">;
 }
 
-export type CollectFeesEventReified<P extends PhantomTypeArgument> = Reified<
-  CollectFeesEvent<P>,
-  CollectFeesEventFields<P>
+export type CollectFeesEventReified = Reified<
+  CollectFeesEvent,
+  CollectFeesEventFields
 >;
 
-export class CollectFeesEvent<P extends PhantomTypeArgument>
-  implements StructClass
-{
+export class CollectFeesEvent implements StructClass {
   __StructClass = true as const;
 
   static readonly $typeName = `${PKG_V1}::liquid_staking::CollectFeesEvent`;
-  static readonly $numTypeParams = 1;
-  static readonly $isPhantom = [true] as const;
+  static readonly $numTypeParams = 0;
+  static readonly $isPhantom = [] as const;
 
   readonly $typeName = CollectFeesEvent.$typeName;
-  readonly $fullTypeName: `${typeof PKG_V1}::liquid_staking::CollectFeesEvent<${PhantomToTypeStr<P>}>`;
-  readonly $typeArgs: [PhantomToTypeStr<P>];
+  readonly $fullTypeName: `${typeof PKG_V1}::liquid_staking::CollectFeesEvent`;
+  readonly $typeArgs: [];
   readonly $isPhantom = CollectFeesEvent.$isPhantom;
 
+  readonly typename: ToField<TypeName>;
   readonly amount: ToField<"u64">;
 
-  private constructor(
-    typeArgs: [PhantomToTypeStr<P>],
-    fields: CollectFeesEventFields<P>,
-  ) {
+  private constructor(typeArgs: [], fields: CollectFeesEventFields) {
     this.$fullTypeName = composeSuiType(
       CollectFeesEvent.$typeName,
       ...typeArgs,
-    ) as `${typeof PKG_V1}::liquid_staking::CollectFeesEvent<${PhantomToTypeStr<P>}>`;
+    ) as `${typeof PKG_V1}::liquid_staking::CollectFeesEvent`;
     this.$typeArgs = typeArgs;
 
+    this.typename = fields.typename;
     this.amount = fields.amount;
   }
 
-  static reified<P extends PhantomReified<PhantomTypeArgument>>(
-    P: P,
-  ): CollectFeesEventReified<ToPhantomTypeArgument<P>> {
+  static reified(): CollectFeesEventReified {
     return {
       typeName: CollectFeesEvent.$typeName,
       fullTypeName: composeSuiType(
         CollectFeesEvent.$typeName,
-        ...[extractType(P)],
-      ) as `${typeof PKG_V1}::liquid_staking::CollectFeesEvent<${PhantomToTypeStr<ToPhantomTypeArgument<P>>}>`,
-      typeArgs: [extractType(P)] as [
-        PhantomToTypeStr<ToPhantomTypeArgument<P>>,
-      ],
+        ...[],
+      ) as `${typeof PKG_V1}::liquid_staking::CollectFeesEvent`,
+      typeArgs: [] as [],
       isPhantom: CollectFeesEvent.$isPhantom,
-      reifiedTypeArgs: [P],
+      reifiedTypeArgs: [],
       fromFields: (fields: Record<string, any>) =>
-        CollectFeesEvent.fromFields(P, fields),
+        CollectFeesEvent.fromFields(fields),
       fromFieldsWithTypes: (item: FieldsWithTypes) =>
-        CollectFeesEvent.fromFieldsWithTypes(P, item),
-      fromBcs: (data: Uint8Array) => CollectFeesEvent.fromBcs(P, data),
+        CollectFeesEvent.fromFieldsWithTypes(item),
+      fromBcs: (data: Uint8Array) => CollectFeesEvent.fromBcs(data),
       bcs: CollectFeesEvent.bcs,
-      fromJSONField: (field: any) => CollectFeesEvent.fromJSONField(P, field),
-      fromJSON: (json: Record<string, any>) =>
-        CollectFeesEvent.fromJSON(P, json),
+      fromJSONField: (field: any) => CollectFeesEvent.fromJSONField(field),
+      fromJSON: (json: Record<string, any>) => CollectFeesEvent.fromJSON(json),
       fromSuiParsedData: (content: SuiParsedData) =>
-        CollectFeesEvent.fromSuiParsedData(P, content),
+        CollectFeesEvent.fromSuiParsedData(content),
       fromSuiObjectData: (content: SuiObjectData) =>
-        CollectFeesEvent.fromSuiObjectData(P, content),
+        CollectFeesEvent.fromSuiObjectData(content),
       fetch: async (client: SuiClient, id: string) =>
-        CollectFeesEvent.fetch(client, P, id),
-      new: (fields: CollectFeesEventFields<ToPhantomTypeArgument<P>>) => {
-        return new CollectFeesEvent([extractType(P)], fields);
+        CollectFeesEvent.fetch(client, id),
+      new: (fields: CollectFeesEventFields) => {
+        return new CollectFeesEvent([], fields);
       },
       kind: "StructClassReified",
     };
   }
 
   static get r() {
-    return CollectFeesEvent.reified;
+    return CollectFeesEvent.reified();
   }
 
-  static phantom<P extends PhantomReified<PhantomTypeArgument>>(
-    P: P,
-  ): PhantomReified<ToTypeStr<CollectFeesEvent<ToPhantomTypeArgument<P>>>> {
-    return phantom(CollectFeesEvent.reified(P));
+  static phantom(): PhantomReified<ToTypeStr<CollectFeesEvent>> {
+    return phantom(CollectFeesEvent.reified());
   }
   static get p() {
-    return CollectFeesEvent.phantom;
+    return CollectFeesEvent.phantom();
   }
 
   static get bcs() {
     return bcs.struct("CollectFeesEvent", {
+      typename: TypeName.bcs,
       amount: bcs.u64(),
     });
   }
 
-  static fromFields<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
-    fields: Record<string, any>,
-  ): CollectFeesEvent<ToPhantomTypeArgument<P>> {
-    return CollectFeesEvent.reified(typeArg).new({
+  static fromFields(fields: Record<string, any>): CollectFeesEvent {
+    return CollectFeesEvent.reified().new({
+      typename: decodeFromFields(TypeName.reified(), fields.typename),
       amount: decodeFromFields("u64", fields.amount),
     });
   }
 
-  static fromFieldsWithTypes<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
-    item: FieldsWithTypes,
-  ): CollectFeesEvent<ToPhantomTypeArgument<P>> {
+  static fromFieldsWithTypes(item: FieldsWithTypes): CollectFeesEvent {
     if (!isCollectFeesEvent(item.type)) {
       throw new Error("not a CollectFeesEvent type");
     }
-    assertFieldsWithTypesArgsMatch(item, [typeArg]);
 
-    return CollectFeesEvent.reified(typeArg).new({
+    return CollectFeesEvent.reified().new({
+      typename: decodeFromFieldsWithTypes(
+        TypeName.reified(),
+        item.fields.typename,
+      ),
       amount: decodeFromFieldsWithTypes("u64", item.fields.amount),
     });
   }
 
-  static fromBcs<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
-    data: Uint8Array,
-  ): CollectFeesEvent<ToPhantomTypeArgument<P>> {
-    return CollectFeesEvent.fromFields(
-      typeArg,
-      CollectFeesEvent.bcs.parse(data),
-    );
+  static fromBcs(data: Uint8Array): CollectFeesEvent {
+    return CollectFeesEvent.fromFields(CollectFeesEvent.bcs.parse(data));
   }
 
   toJSONField() {
     return {
+      typename: this.typename.toJSONField(),
       amount: this.amount.toString(),
     };
   }
@@ -420,35 +406,22 @@ export class CollectFeesEvent<P extends PhantomTypeArgument>
     };
   }
 
-  static fromJSONField<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
-    field: any,
-  ): CollectFeesEvent<ToPhantomTypeArgument<P>> {
-    return CollectFeesEvent.reified(typeArg).new({
+  static fromJSONField(field: any): CollectFeesEvent {
+    return CollectFeesEvent.reified().new({
+      typename: decodeFromJSONField(TypeName.reified(), field.typename),
       amount: decodeFromJSONField("u64", field.amount),
     });
   }
 
-  static fromJSON<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
-    json: Record<string, any>,
-  ): CollectFeesEvent<ToPhantomTypeArgument<P>> {
+  static fromJSON(json: Record<string, any>): CollectFeesEvent {
     if (json.$typeName !== CollectFeesEvent.$typeName) {
       throw new Error("not a WithTwoGenerics json object");
     }
-    assertReifiedTypeArgsMatch(
-      composeSuiType(CollectFeesEvent.$typeName, extractType(typeArg)),
-      json.$typeArgs,
-      [typeArg],
-    );
 
-    return CollectFeesEvent.fromJSONField(typeArg, json);
+    return CollectFeesEvent.fromJSONField(json);
   }
 
-  static fromSuiParsedData<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
-    content: SuiParsedData,
-  ): CollectFeesEvent<ToPhantomTypeArgument<P>> {
+  static fromSuiParsedData(content: SuiParsedData): CollectFeesEvent {
     if (content.dataType !== "moveObject") {
       throw new Error("not an object");
     }
@@ -457,13 +430,10 @@ export class CollectFeesEvent<P extends PhantomTypeArgument>
         `object at ${(content.fields as any).id} is not a CollectFeesEvent object`,
       );
     }
-    return CollectFeesEvent.fromFieldsWithTypes(typeArg, content);
+    return CollectFeesEvent.fromFieldsWithTypes(content);
   }
 
-  static fromSuiObjectData<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
-    data: SuiObjectData,
-  ): CollectFeesEvent<ToPhantomTypeArgument<P>> {
+  static fromSuiObjectData(data: SuiObjectData): CollectFeesEvent {
     if (data.bcs) {
       if (
         data.bcs.dataType !== "moveObject" ||
@@ -472,35 +442,17 @@ export class CollectFeesEvent<P extends PhantomTypeArgument>
         throw new Error(`object at is not a CollectFeesEvent object`);
       }
 
-      const gotTypeArgs = parseTypeName(data.bcs.type).typeArgs;
-      if (gotTypeArgs.length !== 1) {
-        throw new Error(
-          `type argument mismatch: expected 1 type argument but got '${gotTypeArgs.length}'`,
-        );
-      }
-      const gotTypeArg = compressSuiType(gotTypeArgs[0]);
-      const expectedTypeArg = compressSuiType(extractType(typeArg));
-      if (gotTypeArg !== compressSuiType(extractType(typeArg))) {
-        throw new Error(
-          `type argument mismatch: expected '${expectedTypeArg}' but got '${gotTypeArg}'`,
-        );
-      }
-
-      return CollectFeesEvent.fromBcs(typeArg, fromB64(data.bcs.bcsBytes));
+      return CollectFeesEvent.fromBcs(fromB64(data.bcs.bcsBytes));
     }
     if (data.content) {
-      return CollectFeesEvent.fromSuiParsedData(typeArg, data.content);
+      return CollectFeesEvent.fromSuiParsedData(data.content);
     }
     throw new Error(
       "Both `bcs` and `content` fields are missing from the data. Include `showBcs` or `showContent` in the request.",
     );
   }
 
-  static async fetch<P extends PhantomReified<PhantomTypeArgument>>(
-    client: SuiClient,
-    typeArg: P,
-    id: string,
-  ): Promise<CollectFeesEvent<ToPhantomTypeArgument<P>>> {
+  static async fetch(client: SuiClient, id: string): Promise<CollectFeesEvent> {
     const res = await client.getObject({ id, options: { showBcs: true } });
     if (res.error) {
       throw new Error(
@@ -514,7 +466,206 @@ export class CollectFeesEvent<P extends PhantomTypeArgument>
       throw new Error(`object at id ${id} is not a CollectFeesEvent object`);
     }
 
-    return CollectFeesEvent.fromSuiObjectData(typeArg, res.data);
+    return CollectFeesEvent.fromSuiObjectData(res.data);
+  }
+}
+
+/* ============================== CreateEvent =============================== */
+
+export function isCreateEvent(type: string): boolean {
+  type = compressSuiType(type);
+  return type === `${PKG_V1}::liquid_staking::CreateEvent`;
+}
+
+export interface CreateEventFields {
+  typename: ToField<TypeName>;
+  liquidStakingInfoId: ToField<ID>;
+}
+
+export type CreateEventReified = Reified<CreateEvent, CreateEventFields>;
+
+export class CreateEvent implements StructClass {
+  __StructClass = true as const;
+
+  static readonly $typeName = `${PKG_V1}::liquid_staking::CreateEvent`;
+  static readonly $numTypeParams = 0;
+  static readonly $isPhantom = [] as const;
+
+  readonly $typeName = CreateEvent.$typeName;
+  readonly $fullTypeName: `${typeof PKG_V1}::liquid_staking::CreateEvent`;
+  readonly $typeArgs: [];
+  readonly $isPhantom = CreateEvent.$isPhantom;
+
+  readonly typename: ToField<TypeName>;
+  readonly liquidStakingInfoId: ToField<ID>;
+
+  private constructor(typeArgs: [], fields: CreateEventFields) {
+    this.$fullTypeName = composeSuiType(
+      CreateEvent.$typeName,
+      ...typeArgs,
+    ) as `${typeof PKG_V1}::liquid_staking::CreateEvent`;
+    this.$typeArgs = typeArgs;
+
+    this.typename = fields.typename;
+    this.liquidStakingInfoId = fields.liquidStakingInfoId;
+  }
+
+  static reified(): CreateEventReified {
+    return {
+      typeName: CreateEvent.$typeName,
+      fullTypeName: composeSuiType(
+        CreateEvent.$typeName,
+        ...[],
+      ) as `${typeof PKG_V1}::liquid_staking::CreateEvent`,
+      typeArgs: [] as [],
+      isPhantom: CreateEvent.$isPhantom,
+      reifiedTypeArgs: [],
+      fromFields: (fields: Record<string, any>) =>
+        CreateEvent.fromFields(fields),
+      fromFieldsWithTypes: (item: FieldsWithTypes) =>
+        CreateEvent.fromFieldsWithTypes(item),
+      fromBcs: (data: Uint8Array) => CreateEvent.fromBcs(data),
+      bcs: CreateEvent.bcs,
+      fromJSONField: (field: any) => CreateEvent.fromJSONField(field),
+      fromJSON: (json: Record<string, any>) => CreateEvent.fromJSON(json),
+      fromSuiParsedData: (content: SuiParsedData) =>
+        CreateEvent.fromSuiParsedData(content),
+      fromSuiObjectData: (content: SuiObjectData) =>
+        CreateEvent.fromSuiObjectData(content),
+      fetch: async (client: SuiClient, id: string) =>
+        CreateEvent.fetch(client, id),
+      new: (fields: CreateEventFields) => {
+        return new CreateEvent([], fields);
+      },
+      kind: "StructClassReified",
+    };
+  }
+
+  static get r() {
+    return CreateEvent.reified();
+  }
+
+  static phantom(): PhantomReified<ToTypeStr<CreateEvent>> {
+    return phantom(CreateEvent.reified());
+  }
+  static get p() {
+    return CreateEvent.phantom();
+  }
+
+  static get bcs() {
+    return bcs.struct("CreateEvent", {
+      typename: TypeName.bcs,
+      liquid_staking_info_id: ID.bcs,
+    });
+  }
+
+  static fromFields(fields: Record<string, any>): CreateEvent {
+    return CreateEvent.reified().new({
+      typename: decodeFromFields(TypeName.reified(), fields.typename),
+      liquidStakingInfoId: decodeFromFields(
+        ID.reified(),
+        fields.liquid_staking_info_id,
+      ),
+    });
+  }
+
+  static fromFieldsWithTypes(item: FieldsWithTypes): CreateEvent {
+    if (!isCreateEvent(item.type)) {
+      throw new Error("not a CreateEvent type");
+    }
+
+    return CreateEvent.reified().new({
+      typename: decodeFromFieldsWithTypes(
+        TypeName.reified(),
+        item.fields.typename,
+      ),
+      liquidStakingInfoId: decodeFromFieldsWithTypes(
+        ID.reified(),
+        item.fields.liquid_staking_info_id,
+      ),
+    });
+  }
+
+  static fromBcs(data: Uint8Array): CreateEvent {
+    return CreateEvent.fromFields(CreateEvent.bcs.parse(data));
+  }
+
+  toJSONField() {
+    return {
+      typename: this.typename.toJSONField(),
+      liquidStakingInfoId: this.liquidStakingInfoId,
+    };
+  }
+
+  toJSON() {
+    return {
+      $typeName: this.$typeName,
+      $typeArgs: this.$typeArgs,
+      ...this.toJSONField(),
+    };
+  }
+
+  static fromJSONField(field: any): CreateEvent {
+    return CreateEvent.reified().new({
+      typename: decodeFromJSONField(TypeName.reified(), field.typename),
+      liquidStakingInfoId: decodeFromJSONField(
+        ID.reified(),
+        field.liquidStakingInfoId,
+      ),
+    });
+  }
+
+  static fromJSON(json: Record<string, any>): CreateEvent {
+    if (json.$typeName !== CreateEvent.$typeName) {
+      throw new Error("not a WithTwoGenerics json object");
+    }
+
+    return CreateEvent.fromJSONField(json);
+  }
+
+  static fromSuiParsedData(content: SuiParsedData): CreateEvent {
+    if (content.dataType !== "moveObject") {
+      throw new Error("not an object");
+    }
+    if (!isCreateEvent(content.type)) {
+      throw new Error(
+        `object at ${(content.fields as any).id} is not a CreateEvent object`,
+      );
+    }
+    return CreateEvent.fromFieldsWithTypes(content);
+  }
+
+  static fromSuiObjectData(data: SuiObjectData): CreateEvent {
+    if (data.bcs) {
+      if (data.bcs.dataType !== "moveObject" || !isCreateEvent(data.bcs.type)) {
+        throw new Error(`object at is not a CreateEvent object`);
+      }
+
+      return CreateEvent.fromBcs(fromB64(data.bcs.bcsBytes));
+    }
+    if (data.content) {
+      return CreateEvent.fromSuiParsedData(data.content);
+    }
+    throw new Error(
+      "Both `bcs` and `content` fields are missing from the data. Include `showBcs` or `showContent` in the request.",
+    );
+  }
+
+  static async fetch(client: SuiClient, id: string): Promise<CreateEvent> {
+    const res = await client.getObject({ id, options: { showBcs: true } });
+    if (res.error) {
+      throw new Error(
+        `error fetching CreateEvent object at id ${id}: ${res.error.code}`,
+      );
+    }
+    if (
+      res.data?.bcs?.dataType !== "moveObject" ||
+      !isCreateEvent(res.data.bcs.type)
+    ) {
+      throw new Error(`object at id ${id} is not a CreateEvent object`);
+    }
+
+    return CreateEvent.fromSuiObjectData(res.data);
   }
 }
 
@@ -522,134 +673,120 @@ export class CollectFeesEvent<P extends PhantomTypeArgument>
 
 export function isDecreaseValidatorStakeEvent(type: string): boolean {
   type = compressSuiType(type);
-  return type.startsWith(
-    `${PKG_V1}::liquid_staking::DecreaseValidatorStakeEvent` + "<",
-  );
+  return type === `${PKG_V1}::liquid_staking::DecreaseValidatorStakeEvent`;
 }
 
-export interface DecreaseValidatorStakeEventFields<
-  P extends PhantomTypeArgument,
-> {
+export interface DecreaseValidatorStakeEventFields {
+  typename: ToField<TypeName>;
   stakingPoolId: ToField<ID>;
   amount: ToField<"u64">;
 }
 
-export type DecreaseValidatorStakeEventReified<P extends PhantomTypeArgument> =
-  Reified<DecreaseValidatorStakeEvent<P>, DecreaseValidatorStakeEventFields<P>>;
+export type DecreaseValidatorStakeEventReified = Reified<
+  DecreaseValidatorStakeEvent,
+  DecreaseValidatorStakeEventFields
+>;
 
-export class DecreaseValidatorStakeEvent<P extends PhantomTypeArgument>
-  implements StructClass
-{
+export class DecreaseValidatorStakeEvent implements StructClass {
   __StructClass = true as const;
 
   static readonly $typeName = `${PKG_V1}::liquid_staking::DecreaseValidatorStakeEvent`;
-  static readonly $numTypeParams = 1;
-  static readonly $isPhantom = [true] as const;
+  static readonly $numTypeParams = 0;
+  static readonly $isPhantom = [] as const;
 
   readonly $typeName = DecreaseValidatorStakeEvent.$typeName;
-  readonly $fullTypeName: `${typeof PKG_V1}::liquid_staking::DecreaseValidatorStakeEvent<${PhantomToTypeStr<P>}>`;
-  readonly $typeArgs: [PhantomToTypeStr<P>];
+  readonly $fullTypeName: `${typeof PKG_V1}::liquid_staking::DecreaseValidatorStakeEvent`;
+  readonly $typeArgs: [];
   readonly $isPhantom = DecreaseValidatorStakeEvent.$isPhantom;
 
+  readonly typename: ToField<TypeName>;
   readonly stakingPoolId: ToField<ID>;
   readonly amount: ToField<"u64">;
 
-  private constructor(
-    typeArgs: [PhantomToTypeStr<P>],
-    fields: DecreaseValidatorStakeEventFields<P>,
-  ) {
+  private constructor(typeArgs: [], fields: DecreaseValidatorStakeEventFields) {
     this.$fullTypeName = composeSuiType(
       DecreaseValidatorStakeEvent.$typeName,
       ...typeArgs,
-    ) as `${typeof PKG_V1}::liquid_staking::DecreaseValidatorStakeEvent<${PhantomToTypeStr<P>}>`;
+    ) as `${typeof PKG_V1}::liquid_staking::DecreaseValidatorStakeEvent`;
     this.$typeArgs = typeArgs;
 
+    this.typename = fields.typename;
     this.stakingPoolId = fields.stakingPoolId;
     this.amount = fields.amount;
   }
 
-  static reified<P extends PhantomReified<PhantomTypeArgument>>(
-    P: P,
-  ): DecreaseValidatorStakeEventReified<ToPhantomTypeArgument<P>> {
+  static reified(): DecreaseValidatorStakeEventReified {
     return {
       typeName: DecreaseValidatorStakeEvent.$typeName,
       fullTypeName: composeSuiType(
         DecreaseValidatorStakeEvent.$typeName,
-        ...[extractType(P)],
-      ) as `${typeof PKG_V1}::liquid_staking::DecreaseValidatorStakeEvent<${PhantomToTypeStr<ToPhantomTypeArgument<P>>}>`,
-      typeArgs: [extractType(P)] as [
-        PhantomToTypeStr<ToPhantomTypeArgument<P>>,
-      ],
+        ...[],
+      ) as `${typeof PKG_V1}::liquid_staking::DecreaseValidatorStakeEvent`,
+      typeArgs: [] as [],
       isPhantom: DecreaseValidatorStakeEvent.$isPhantom,
-      reifiedTypeArgs: [P],
+      reifiedTypeArgs: [],
       fromFields: (fields: Record<string, any>) =>
-        DecreaseValidatorStakeEvent.fromFields(P, fields),
+        DecreaseValidatorStakeEvent.fromFields(fields),
       fromFieldsWithTypes: (item: FieldsWithTypes) =>
-        DecreaseValidatorStakeEvent.fromFieldsWithTypes(P, item),
-      fromBcs: (data: Uint8Array) =>
-        DecreaseValidatorStakeEvent.fromBcs(P, data),
+        DecreaseValidatorStakeEvent.fromFieldsWithTypes(item),
+      fromBcs: (data: Uint8Array) => DecreaseValidatorStakeEvent.fromBcs(data),
       bcs: DecreaseValidatorStakeEvent.bcs,
       fromJSONField: (field: any) =>
-        DecreaseValidatorStakeEvent.fromJSONField(P, field),
+        DecreaseValidatorStakeEvent.fromJSONField(field),
       fromJSON: (json: Record<string, any>) =>
-        DecreaseValidatorStakeEvent.fromJSON(P, json),
+        DecreaseValidatorStakeEvent.fromJSON(json),
       fromSuiParsedData: (content: SuiParsedData) =>
-        DecreaseValidatorStakeEvent.fromSuiParsedData(P, content),
+        DecreaseValidatorStakeEvent.fromSuiParsedData(content),
       fromSuiObjectData: (content: SuiObjectData) =>
-        DecreaseValidatorStakeEvent.fromSuiObjectData(P, content),
+        DecreaseValidatorStakeEvent.fromSuiObjectData(content),
       fetch: async (client: SuiClient, id: string) =>
-        DecreaseValidatorStakeEvent.fetch(client, P, id),
-      new: (
-        fields: DecreaseValidatorStakeEventFields<ToPhantomTypeArgument<P>>,
-      ) => {
-        return new DecreaseValidatorStakeEvent([extractType(P)], fields);
+        DecreaseValidatorStakeEvent.fetch(client, id),
+      new: (fields: DecreaseValidatorStakeEventFields) => {
+        return new DecreaseValidatorStakeEvent([], fields);
       },
       kind: "StructClassReified",
     };
   }
 
   static get r() {
-    return DecreaseValidatorStakeEvent.reified;
+    return DecreaseValidatorStakeEvent.reified();
   }
 
-  static phantom<P extends PhantomReified<PhantomTypeArgument>>(
-    P: P,
-  ): PhantomReified<
-    ToTypeStr<DecreaseValidatorStakeEvent<ToPhantomTypeArgument<P>>>
-  > {
-    return phantom(DecreaseValidatorStakeEvent.reified(P));
+  static phantom(): PhantomReified<ToTypeStr<DecreaseValidatorStakeEvent>> {
+    return phantom(DecreaseValidatorStakeEvent.reified());
   }
   static get p() {
-    return DecreaseValidatorStakeEvent.phantom;
+    return DecreaseValidatorStakeEvent.phantom();
   }
 
   static get bcs() {
     return bcs.struct("DecreaseValidatorStakeEvent", {
+      typename: TypeName.bcs,
       staking_pool_id: ID.bcs,
       amount: bcs.u64(),
     });
   }
 
-  static fromFields<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
-    fields: Record<string, any>,
-  ): DecreaseValidatorStakeEvent<ToPhantomTypeArgument<P>> {
-    return DecreaseValidatorStakeEvent.reified(typeArg).new({
+  static fromFields(fields: Record<string, any>): DecreaseValidatorStakeEvent {
+    return DecreaseValidatorStakeEvent.reified().new({
+      typename: decodeFromFields(TypeName.reified(), fields.typename),
       stakingPoolId: decodeFromFields(ID.reified(), fields.staking_pool_id),
       amount: decodeFromFields("u64", fields.amount),
     });
   }
 
-  static fromFieldsWithTypes<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
+  static fromFieldsWithTypes(
     item: FieldsWithTypes,
-  ): DecreaseValidatorStakeEvent<ToPhantomTypeArgument<P>> {
+  ): DecreaseValidatorStakeEvent {
     if (!isDecreaseValidatorStakeEvent(item.type)) {
       throw new Error("not a DecreaseValidatorStakeEvent type");
     }
-    assertFieldsWithTypesArgsMatch(item, [typeArg]);
 
-    return DecreaseValidatorStakeEvent.reified(typeArg).new({
+    return DecreaseValidatorStakeEvent.reified().new({
+      typename: decodeFromFieldsWithTypes(
+        TypeName.reified(),
+        item.fields.typename,
+      ),
       stakingPoolId: decodeFromFieldsWithTypes(
         ID.reified(),
         item.fields.staking_pool_id,
@@ -658,18 +795,15 @@ export class DecreaseValidatorStakeEvent<P extends PhantomTypeArgument>
     });
   }
 
-  static fromBcs<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
-    data: Uint8Array,
-  ): DecreaseValidatorStakeEvent<ToPhantomTypeArgument<P>> {
+  static fromBcs(data: Uint8Array): DecreaseValidatorStakeEvent {
     return DecreaseValidatorStakeEvent.fromFields(
-      typeArg,
       DecreaseValidatorStakeEvent.bcs.parse(data),
     );
   }
 
   toJSONField() {
     return {
+      typename: this.typename.toJSONField(),
       stakingPoolId: this.stakingPoolId,
       amount: this.amount.toString(),
     };
@@ -683,39 +817,25 @@ export class DecreaseValidatorStakeEvent<P extends PhantomTypeArgument>
     };
   }
 
-  static fromJSONField<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
-    field: any,
-  ): DecreaseValidatorStakeEvent<ToPhantomTypeArgument<P>> {
-    return DecreaseValidatorStakeEvent.reified(typeArg).new({
+  static fromJSONField(field: any): DecreaseValidatorStakeEvent {
+    return DecreaseValidatorStakeEvent.reified().new({
+      typename: decodeFromJSONField(TypeName.reified(), field.typename),
       stakingPoolId: decodeFromJSONField(ID.reified(), field.stakingPoolId),
       amount: decodeFromJSONField("u64", field.amount),
     });
   }
 
-  static fromJSON<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
-    json: Record<string, any>,
-  ): DecreaseValidatorStakeEvent<ToPhantomTypeArgument<P>> {
+  static fromJSON(json: Record<string, any>): DecreaseValidatorStakeEvent {
     if (json.$typeName !== DecreaseValidatorStakeEvent.$typeName) {
       throw new Error("not a WithTwoGenerics json object");
     }
-    assertReifiedTypeArgsMatch(
-      composeSuiType(
-        DecreaseValidatorStakeEvent.$typeName,
-        extractType(typeArg),
-      ),
-      json.$typeArgs,
-      [typeArg],
-    );
 
-    return DecreaseValidatorStakeEvent.fromJSONField(typeArg, json);
+    return DecreaseValidatorStakeEvent.fromJSONField(json);
   }
 
-  static fromSuiParsedData<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
+  static fromSuiParsedData(
     content: SuiParsedData,
-  ): DecreaseValidatorStakeEvent<ToPhantomTypeArgument<P>> {
+  ): DecreaseValidatorStakeEvent {
     if (content.dataType !== "moveObject") {
       throw new Error("not an object");
     }
@@ -724,13 +844,10 @@ export class DecreaseValidatorStakeEvent<P extends PhantomTypeArgument>
         `object at ${(content.fields as any).id} is not a DecreaseValidatorStakeEvent object`,
       );
     }
-    return DecreaseValidatorStakeEvent.fromFieldsWithTypes(typeArg, content);
+    return DecreaseValidatorStakeEvent.fromFieldsWithTypes(content);
   }
 
-  static fromSuiObjectData<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
-    data: SuiObjectData,
-  ): DecreaseValidatorStakeEvent<ToPhantomTypeArgument<P>> {
+  static fromSuiObjectData(data: SuiObjectData): DecreaseValidatorStakeEvent {
     if (data.bcs) {
       if (
         data.bcs.dataType !== "moveObject" ||
@@ -741,41 +858,20 @@ export class DecreaseValidatorStakeEvent<P extends PhantomTypeArgument>
         );
       }
 
-      const gotTypeArgs = parseTypeName(data.bcs.type).typeArgs;
-      if (gotTypeArgs.length !== 1) {
-        throw new Error(
-          `type argument mismatch: expected 1 type argument but got '${gotTypeArgs.length}'`,
-        );
-      }
-      const gotTypeArg = compressSuiType(gotTypeArgs[0]);
-      const expectedTypeArg = compressSuiType(extractType(typeArg));
-      if (gotTypeArg !== compressSuiType(extractType(typeArg))) {
-        throw new Error(
-          `type argument mismatch: expected '${expectedTypeArg}' but got '${gotTypeArg}'`,
-        );
-      }
-
-      return DecreaseValidatorStakeEvent.fromBcs(
-        typeArg,
-        fromB64(data.bcs.bcsBytes),
-      );
+      return DecreaseValidatorStakeEvent.fromBcs(fromB64(data.bcs.bcsBytes));
     }
     if (data.content) {
-      return DecreaseValidatorStakeEvent.fromSuiParsedData(
-        typeArg,
-        data.content,
-      );
+      return DecreaseValidatorStakeEvent.fromSuiParsedData(data.content);
     }
     throw new Error(
       "Both `bcs` and `content` fields are missing from the data. Include `showBcs` or `showContent` in the request.",
     );
   }
 
-  static async fetch<P extends PhantomReified<PhantomTypeArgument>>(
+  static async fetch(
     client: SuiClient,
-    typeArg: P,
     id: string,
-  ): Promise<DecreaseValidatorStakeEvent<ToPhantomTypeArgument<P>>> {
+  ): Promise<DecreaseValidatorStakeEvent> {
     const res = await client.getObject({ id, options: { showBcs: true } });
     if (res.error) {
       throw new Error(
@@ -791,7 +887,7 @@ export class DecreaseValidatorStakeEvent<P extends PhantomTypeArgument>
       );
     }
 
-    return DecreaseValidatorStakeEvent.fromSuiObjectData(typeArg, res.data);
+    return DecreaseValidatorStakeEvent.fromSuiObjectData(res.data);
   }
 }
 
@@ -799,107 +895,99 @@ export class DecreaseValidatorStakeEvent<P extends PhantomTypeArgument>
 
 export function isEpochChangedEvent(type: string): boolean {
   type = compressSuiType(type);
-  return type.startsWith(`${PKG_V1}::liquid_staking::EpochChangedEvent` + "<");
+  return type === `${PKG_V1}::liquid_staking::EpochChangedEvent`;
 }
 
-export interface EpochChangedEventFields<P extends PhantomTypeArgument> {
+export interface EpochChangedEventFields {
+  typename: ToField<TypeName>;
   oldSuiSupply: ToField<"u64">;
   newSuiSupply: ToField<"u64">;
   lstSupply: ToField<"u64">;
   spreadFee: ToField<"u64">;
 }
 
-export type EpochChangedEventReified<P extends PhantomTypeArgument> = Reified<
-  EpochChangedEvent<P>,
-  EpochChangedEventFields<P>
+export type EpochChangedEventReified = Reified<
+  EpochChangedEvent,
+  EpochChangedEventFields
 >;
 
-export class EpochChangedEvent<P extends PhantomTypeArgument>
-  implements StructClass
-{
+export class EpochChangedEvent implements StructClass {
   __StructClass = true as const;
 
   static readonly $typeName = `${PKG_V1}::liquid_staking::EpochChangedEvent`;
-  static readonly $numTypeParams = 1;
-  static readonly $isPhantom = [true] as const;
+  static readonly $numTypeParams = 0;
+  static readonly $isPhantom = [] as const;
 
   readonly $typeName = EpochChangedEvent.$typeName;
-  readonly $fullTypeName: `${typeof PKG_V1}::liquid_staking::EpochChangedEvent<${PhantomToTypeStr<P>}>`;
-  readonly $typeArgs: [PhantomToTypeStr<P>];
+  readonly $fullTypeName: `${typeof PKG_V1}::liquid_staking::EpochChangedEvent`;
+  readonly $typeArgs: [];
   readonly $isPhantom = EpochChangedEvent.$isPhantom;
 
+  readonly typename: ToField<TypeName>;
   readonly oldSuiSupply: ToField<"u64">;
   readonly newSuiSupply: ToField<"u64">;
   readonly lstSupply: ToField<"u64">;
   readonly spreadFee: ToField<"u64">;
 
-  private constructor(
-    typeArgs: [PhantomToTypeStr<P>],
-    fields: EpochChangedEventFields<P>,
-  ) {
+  private constructor(typeArgs: [], fields: EpochChangedEventFields) {
     this.$fullTypeName = composeSuiType(
       EpochChangedEvent.$typeName,
       ...typeArgs,
-    ) as `${typeof PKG_V1}::liquid_staking::EpochChangedEvent<${PhantomToTypeStr<P>}>`;
+    ) as `${typeof PKG_V1}::liquid_staking::EpochChangedEvent`;
     this.$typeArgs = typeArgs;
 
+    this.typename = fields.typename;
     this.oldSuiSupply = fields.oldSuiSupply;
     this.newSuiSupply = fields.newSuiSupply;
     this.lstSupply = fields.lstSupply;
     this.spreadFee = fields.spreadFee;
   }
 
-  static reified<P extends PhantomReified<PhantomTypeArgument>>(
-    P: P,
-  ): EpochChangedEventReified<ToPhantomTypeArgument<P>> {
+  static reified(): EpochChangedEventReified {
     return {
       typeName: EpochChangedEvent.$typeName,
       fullTypeName: composeSuiType(
         EpochChangedEvent.$typeName,
-        ...[extractType(P)],
-      ) as `${typeof PKG_V1}::liquid_staking::EpochChangedEvent<${PhantomToTypeStr<ToPhantomTypeArgument<P>>}>`,
-      typeArgs: [extractType(P)] as [
-        PhantomToTypeStr<ToPhantomTypeArgument<P>>,
-      ],
+        ...[],
+      ) as `${typeof PKG_V1}::liquid_staking::EpochChangedEvent`,
+      typeArgs: [] as [],
       isPhantom: EpochChangedEvent.$isPhantom,
-      reifiedTypeArgs: [P],
+      reifiedTypeArgs: [],
       fromFields: (fields: Record<string, any>) =>
-        EpochChangedEvent.fromFields(P, fields),
+        EpochChangedEvent.fromFields(fields),
       fromFieldsWithTypes: (item: FieldsWithTypes) =>
-        EpochChangedEvent.fromFieldsWithTypes(P, item),
-      fromBcs: (data: Uint8Array) => EpochChangedEvent.fromBcs(P, data),
+        EpochChangedEvent.fromFieldsWithTypes(item),
+      fromBcs: (data: Uint8Array) => EpochChangedEvent.fromBcs(data),
       bcs: EpochChangedEvent.bcs,
-      fromJSONField: (field: any) => EpochChangedEvent.fromJSONField(P, field),
-      fromJSON: (json: Record<string, any>) =>
-        EpochChangedEvent.fromJSON(P, json),
+      fromJSONField: (field: any) => EpochChangedEvent.fromJSONField(field),
+      fromJSON: (json: Record<string, any>) => EpochChangedEvent.fromJSON(json),
       fromSuiParsedData: (content: SuiParsedData) =>
-        EpochChangedEvent.fromSuiParsedData(P, content),
+        EpochChangedEvent.fromSuiParsedData(content),
       fromSuiObjectData: (content: SuiObjectData) =>
-        EpochChangedEvent.fromSuiObjectData(P, content),
+        EpochChangedEvent.fromSuiObjectData(content),
       fetch: async (client: SuiClient, id: string) =>
-        EpochChangedEvent.fetch(client, P, id),
-      new: (fields: EpochChangedEventFields<ToPhantomTypeArgument<P>>) => {
-        return new EpochChangedEvent([extractType(P)], fields);
+        EpochChangedEvent.fetch(client, id),
+      new: (fields: EpochChangedEventFields) => {
+        return new EpochChangedEvent([], fields);
       },
       kind: "StructClassReified",
     };
   }
 
   static get r() {
-    return EpochChangedEvent.reified;
+    return EpochChangedEvent.reified();
   }
 
-  static phantom<P extends PhantomReified<PhantomTypeArgument>>(
-    P: P,
-  ): PhantomReified<ToTypeStr<EpochChangedEvent<ToPhantomTypeArgument<P>>>> {
-    return phantom(EpochChangedEvent.reified(P));
+  static phantom(): PhantomReified<ToTypeStr<EpochChangedEvent>> {
+    return phantom(EpochChangedEvent.reified());
   }
   static get p() {
-    return EpochChangedEvent.phantom;
+    return EpochChangedEvent.phantom();
   }
 
   static get bcs() {
     return bcs.struct("EpochChangedEvent", {
+      typename: TypeName.bcs,
       old_sui_supply: bcs.u64(),
       new_sui_supply: bcs.u64(),
       lst_supply: bcs.u64(),
@@ -907,11 +995,9 @@ export class EpochChangedEvent<P extends PhantomTypeArgument>
     });
   }
 
-  static fromFields<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
-    fields: Record<string, any>,
-  ): EpochChangedEvent<ToPhantomTypeArgument<P>> {
-    return EpochChangedEvent.reified(typeArg).new({
+  static fromFields(fields: Record<string, any>): EpochChangedEvent {
+    return EpochChangedEvent.reified().new({
+      typename: decodeFromFields(TypeName.reified(), fields.typename),
       oldSuiSupply: decodeFromFields("u64", fields.old_sui_supply),
       newSuiSupply: decodeFromFields("u64", fields.new_sui_supply),
       lstSupply: decodeFromFields("u64", fields.lst_supply),
@@ -919,16 +1005,16 @@ export class EpochChangedEvent<P extends PhantomTypeArgument>
     });
   }
 
-  static fromFieldsWithTypes<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
-    item: FieldsWithTypes,
-  ): EpochChangedEvent<ToPhantomTypeArgument<P>> {
+  static fromFieldsWithTypes(item: FieldsWithTypes): EpochChangedEvent {
     if (!isEpochChangedEvent(item.type)) {
       throw new Error("not a EpochChangedEvent type");
     }
-    assertFieldsWithTypesArgsMatch(item, [typeArg]);
 
-    return EpochChangedEvent.reified(typeArg).new({
+    return EpochChangedEvent.reified().new({
+      typename: decodeFromFieldsWithTypes(
+        TypeName.reified(),
+        item.fields.typename,
+      ),
       oldSuiSupply: decodeFromFieldsWithTypes(
         "u64",
         item.fields.old_sui_supply,
@@ -942,18 +1028,13 @@ export class EpochChangedEvent<P extends PhantomTypeArgument>
     });
   }
 
-  static fromBcs<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
-    data: Uint8Array,
-  ): EpochChangedEvent<ToPhantomTypeArgument<P>> {
-    return EpochChangedEvent.fromFields(
-      typeArg,
-      EpochChangedEvent.bcs.parse(data),
-    );
+  static fromBcs(data: Uint8Array): EpochChangedEvent {
+    return EpochChangedEvent.fromFields(EpochChangedEvent.bcs.parse(data));
   }
 
   toJSONField() {
     return {
+      typename: this.typename.toJSONField(),
       oldSuiSupply: this.oldSuiSupply.toString(),
       newSuiSupply: this.newSuiSupply.toString(),
       lstSupply: this.lstSupply.toString(),
@@ -969,11 +1050,9 @@ export class EpochChangedEvent<P extends PhantomTypeArgument>
     };
   }
 
-  static fromJSONField<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
-    field: any,
-  ): EpochChangedEvent<ToPhantomTypeArgument<P>> {
-    return EpochChangedEvent.reified(typeArg).new({
+  static fromJSONField(field: any): EpochChangedEvent {
+    return EpochChangedEvent.reified().new({
+      typename: decodeFromJSONField(TypeName.reified(), field.typename),
       oldSuiSupply: decodeFromJSONField("u64", field.oldSuiSupply),
       newSuiSupply: decodeFromJSONField("u64", field.newSuiSupply),
       lstSupply: decodeFromJSONField("u64", field.lstSupply),
@@ -981,26 +1060,15 @@ export class EpochChangedEvent<P extends PhantomTypeArgument>
     });
   }
 
-  static fromJSON<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
-    json: Record<string, any>,
-  ): EpochChangedEvent<ToPhantomTypeArgument<P>> {
+  static fromJSON(json: Record<string, any>): EpochChangedEvent {
     if (json.$typeName !== EpochChangedEvent.$typeName) {
       throw new Error("not a WithTwoGenerics json object");
     }
-    assertReifiedTypeArgsMatch(
-      composeSuiType(EpochChangedEvent.$typeName, extractType(typeArg)),
-      json.$typeArgs,
-      [typeArg],
-    );
 
-    return EpochChangedEvent.fromJSONField(typeArg, json);
+    return EpochChangedEvent.fromJSONField(json);
   }
 
-  static fromSuiParsedData<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
-    content: SuiParsedData,
-  ): EpochChangedEvent<ToPhantomTypeArgument<P>> {
+  static fromSuiParsedData(content: SuiParsedData): EpochChangedEvent {
     if (content.dataType !== "moveObject") {
       throw new Error("not an object");
     }
@@ -1009,13 +1077,10 @@ export class EpochChangedEvent<P extends PhantomTypeArgument>
         `object at ${(content.fields as any).id} is not a EpochChangedEvent object`,
       );
     }
-    return EpochChangedEvent.fromFieldsWithTypes(typeArg, content);
+    return EpochChangedEvent.fromFieldsWithTypes(content);
   }
 
-  static fromSuiObjectData<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
-    data: SuiObjectData,
-  ): EpochChangedEvent<ToPhantomTypeArgument<P>> {
+  static fromSuiObjectData(data: SuiObjectData): EpochChangedEvent {
     if (data.bcs) {
       if (
         data.bcs.dataType !== "moveObject" ||
@@ -1024,35 +1089,20 @@ export class EpochChangedEvent<P extends PhantomTypeArgument>
         throw new Error(`object at is not a EpochChangedEvent object`);
       }
 
-      const gotTypeArgs = parseTypeName(data.bcs.type).typeArgs;
-      if (gotTypeArgs.length !== 1) {
-        throw new Error(
-          `type argument mismatch: expected 1 type argument but got '${gotTypeArgs.length}'`,
-        );
-      }
-      const gotTypeArg = compressSuiType(gotTypeArgs[0]);
-      const expectedTypeArg = compressSuiType(extractType(typeArg));
-      if (gotTypeArg !== compressSuiType(extractType(typeArg))) {
-        throw new Error(
-          `type argument mismatch: expected '${expectedTypeArg}' but got '${gotTypeArg}'`,
-        );
-      }
-
-      return EpochChangedEvent.fromBcs(typeArg, fromB64(data.bcs.bcsBytes));
+      return EpochChangedEvent.fromBcs(fromB64(data.bcs.bcsBytes));
     }
     if (data.content) {
-      return EpochChangedEvent.fromSuiParsedData(typeArg, data.content);
+      return EpochChangedEvent.fromSuiParsedData(data.content);
     }
     throw new Error(
       "Both `bcs` and `content` fields are missing from the data. Include `showBcs` or `showContent` in the request.",
     );
   }
 
-  static async fetch<P extends PhantomReified<PhantomTypeArgument>>(
+  static async fetch(
     client: SuiClient,
-    typeArg: P,
     id: string,
-  ): Promise<EpochChangedEvent<ToPhantomTypeArgument<P>>> {
+  ): Promise<EpochChangedEvent> {
     const res = await client.getObject({ id, options: { showBcs: true } });
     if (res.error) {
       throw new Error(
@@ -1066,7 +1116,7 @@ export class EpochChangedEvent<P extends PhantomTypeArgument>
       throw new Error(`object at id ${id} is not a EpochChangedEvent object`);
     }
 
-    return EpochChangedEvent.fromSuiObjectData(typeArg, res.data);
+    return EpochChangedEvent.fromSuiObjectData(res.data);
   }
 }
 
@@ -1074,134 +1124,120 @@ export class EpochChangedEvent<P extends PhantomTypeArgument>
 
 export function isIncreaseValidatorStakeEvent(type: string): boolean {
   type = compressSuiType(type);
-  return type.startsWith(
-    `${PKG_V1}::liquid_staking::IncreaseValidatorStakeEvent` + "<",
-  );
+  return type === `${PKG_V1}::liquid_staking::IncreaseValidatorStakeEvent`;
 }
 
-export interface IncreaseValidatorStakeEventFields<
-  P extends PhantomTypeArgument,
-> {
+export interface IncreaseValidatorStakeEventFields {
+  typename: ToField<TypeName>;
   stakingPoolId: ToField<ID>;
   amount: ToField<"u64">;
 }
 
-export type IncreaseValidatorStakeEventReified<P extends PhantomTypeArgument> =
-  Reified<IncreaseValidatorStakeEvent<P>, IncreaseValidatorStakeEventFields<P>>;
+export type IncreaseValidatorStakeEventReified = Reified<
+  IncreaseValidatorStakeEvent,
+  IncreaseValidatorStakeEventFields
+>;
 
-export class IncreaseValidatorStakeEvent<P extends PhantomTypeArgument>
-  implements StructClass
-{
+export class IncreaseValidatorStakeEvent implements StructClass {
   __StructClass = true as const;
 
   static readonly $typeName = `${PKG_V1}::liquid_staking::IncreaseValidatorStakeEvent`;
-  static readonly $numTypeParams = 1;
-  static readonly $isPhantom = [true] as const;
+  static readonly $numTypeParams = 0;
+  static readonly $isPhantom = [] as const;
 
   readonly $typeName = IncreaseValidatorStakeEvent.$typeName;
-  readonly $fullTypeName: `${typeof PKG_V1}::liquid_staking::IncreaseValidatorStakeEvent<${PhantomToTypeStr<P>}>`;
-  readonly $typeArgs: [PhantomToTypeStr<P>];
+  readonly $fullTypeName: `${typeof PKG_V1}::liquid_staking::IncreaseValidatorStakeEvent`;
+  readonly $typeArgs: [];
   readonly $isPhantom = IncreaseValidatorStakeEvent.$isPhantom;
 
+  readonly typename: ToField<TypeName>;
   readonly stakingPoolId: ToField<ID>;
   readonly amount: ToField<"u64">;
 
-  private constructor(
-    typeArgs: [PhantomToTypeStr<P>],
-    fields: IncreaseValidatorStakeEventFields<P>,
-  ) {
+  private constructor(typeArgs: [], fields: IncreaseValidatorStakeEventFields) {
     this.$fullTypeName = composeSuiType(
       IncreaseValidatorStakeEvent.$typeName,
       ...typeArgs,
-    ) as `${typeof PKG_V1}::liquid_staking::IncreaseValidatorStakeEvent<${PhantomToTypeStr<P>}>`;
+    ) as `${typeof PKG_V1}::liquid_staking::IncreaseValidatorStakeEvent`;
     this.$typeArgs = typeArgs;
 
+    this.typename = fields.typename;
     this.stakingPoolId = fields.stakingPoolId;
     this.amount = fields.amount;
   }
 
-  static reified<P extends PhantomReified<PhantomTypeArgument>>(
-    P: P,
-  ): IncreaseValidatorStakeEventReified<ToPhantomTypeArgument<P>> {
+  static reified(): IncreaseValidatorStakeEventReified {
     return {
       typeName: IncreaseValidatorStakeEvent.$typeName,
       fullTypeName: composeSuiType(
         IncreaseValidatorStakeEvent.$typeName,
-        ...[extractType(P)],
-      ) as `${typeof PKG_V1}::liquid_staking::IncreaseValidatorStakeEvent<${PhantomToTypeStr<ToPhantomTypeArgument<P>>}>`,
-      typeArgs: [extractType(P)] as [
-        PhantomToTypeStr<ToPhantomTypeArgument<P>>,
-      ],
+        ...[],
+      ) as `${typeof PKG_V1}::liquid_staking::IncreaseValidatorStakeEvent`,
+      typeArgs: [] as [],
       isPhantom: IncreaseValidatorStakeEvent.$isPhantom,
-      reifiedTypeArgs: [P],
+      reifiedTypeArgs: [],
       fromFields: (fields: Record<string, any>) =>
-        IncreaseValidatorStakeEvent.fromFields(P, fields),
+        IncreaseValidatorStakeEvent.fromFields(fields),
       fromFieldsWithTypes: (item: FieldsWithTypes) =>
-        IncreaseValidatorStakeEvent.fromFieldsWithTypes(P, item),
-      fromBcs: (data: Uint8Array) =>
-        IncreaseValidatorStakeEvent.fromBcs(P, data),
+        IncreaseValidatorStakeEvent.fromFieldsWithTypes(item),
+      fromBcs: (data: Uint8Array) => IncreaseValidatorStakeEvent.fromBcs(data),
       bcs: IncreaseValidatorStakeEvent.bcs,
       fromJSONField: (field: any) =>
-        IncreaseValidatorStakeEvent.fromJSONField(P, field),
+        IncreaseValidatorStakeEvent.fromJSONField(field),
       fromJSON: (json: Record<string, any>) =>
-        IncreaseValidatorStakeEvent.fromJSON(P, json),
+        IncreaseValidatorStakeEvent.fromJSON(json),
       fromSuiParsedData: (content: SuiParsedData) =>
-        IncreaseValidatorStakeEvent.fromSuiParsedData(P, content),
+        IncreaseValidatorStakeEvent.fromSuiParsedData(content),
       fromSuiObjectData: (content: SuiObjectData) =>
-        IncreaseValidatorStakeEvent.fromSuiObjectData(P, content),
+        IncreaseValidatorStakeEvent.fromSuiObjectData(content),
       fetch: async (client: SuiClient, id: string) =>
-        IncreaseValidatorStakeEvent.fetch(client, P, id),
-      new: (
-        fields: IncreaseValidatorStakeEventFields<ToPhantomTypeArgument<P>>,
-      ) => {
-        return new IncreaseValidatorStakeEvent([extractType(P)], fields);
+        IncreaseValidatorStakeEvent.fetch(client, id),
+      new: (fields: IncreaseValidatorStakeEventFields) => {
+        return new IncreaseValidatorStakeEvent([], fields);
       },
       kind: "StructClassReified",
     };
   }
 
   static get r() {
-    return IncreaseValidatorStakeEvent.reified;
+    return IncreaseValidatorStakeEvent.reified();
   }
 
-  static phantom<P extends PhantomReified<PhantomTypeArgument>>(
-    P: P,
-  ): PhantomReified<
-    ToTypeStr<IncreaseValidatorStakeEvent<ToPhantomTypeArgument<P>>>
-  > {
-    return phantom(IncreaseValidatorStakeEvent.reified(P));
+  static phantom(): PhantomReified<ToTypeStr<IncreaseValidatorStakeEvent>> {
+    return phantom(IncreaseValidatorStakeEvent.reified());
   }
   static get p() {
-    return IncreaseValidatorStakeEvent.phantom;
+    return IncreaseValidatorStakeEvent.phantom();
   }
 
   static get bcs() {
     return bcs.struct("IncreaseValidatorStakeEvent", {
+      typename: TypeName.bcs,
       staking_pool_id: ID.bcs,
       amount: bcs.u64(),
     });
   }
 
-  static fromFields<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
-    fields: Record<string, any>,
-  ): IncreaseValidatorStakeEvent<ToPhantomTypeArgument<P>> {
-    return IncreaseValidatorStakeEvent.reified(typeArg).new({
+  static fromFields(fields: Record<string, any>): IncreaseValidatorStakeEvent {
+    return IncreaseValidatorStakeEvent.reified().new({
+      typename: decodeFromFields(TypeName.reified(), fields.typename),
       stakingPoolId: decodeFromFields(ID.reified(), fields.staking_pool_id),
       amount: decodeFromFields("u64", fields.amount),
     });
   }
 
-  static fromFieldsWithTypes<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
+  static fromFieldsWithTypes(
     item: FieldsWithTypes,
-  ): IncreaseValidatorStakeEvent<ToPhantomTypeArgument<P>> {
+  ): IncreaseValidatorStakeEvent {
     if (!isIncreaseValidatorStakeEvent(item.type)) {
       throw new Error("not a IncreaseValidatorStakeEvent type");
     }
-    assertFieldsWithTypesArgsMatch(item, [typeArg]);
 
-    return IncreaseValidatorStakeEvent.reified(typeArg).new({
+    return IncreaseValidatorStakeEvent.reified().new({
+      typename: decodeFromFieldsWithTypes(
+        TypeName.reified(),
+        item.fields.typename,
+      ),
       stakingPoolId: decodeFromFieldsWithTypes(
         ID.reified(),
         item.fields.staking_pool_id,
@@ -1210,18 +1246,15 @@ export class IncreaseValidatorStakeEvent<P extends PhantomTypeArgument>
     });
   }
 
-  static fromBcs<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
-    data: Uint8Array,
-  ): IncreaseValidatorStakeEvent<ToPhantomTypeArgument<P>> {
+  static fromBcs(data: Uint8Array): IncreaseValidatorStakeEvent {
     return IncreaseValidatorStakeEvent.fromFields(
-      typeArg,
       IncreaseValidatorStakeEvent.bcs.parse(data),
     );
   }
 
   toJSONField() {
     return {
+      typename: this.typename.toJSONField(),
       stakingPoolId: this.stakingPoolId,
       amount: this.amount.toString(),
     };
@@ -1235,39 +1268,25 @@ export class IncreaseValidatorStakeEvent<P extends PhantomTypeArgument>
     };
   }
 
-  static fromJSONField<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
-    field: any,
-  ): IncreaseValidatorStakeEvent<ToPhantomTypeArgument<P>> {
-    return IncreaseValidatorStakeEvent.reified(typeArg).new({
+  static fromJSONField(field: any): IncreaseValidatorStakeEvent {
+    return IncreaseValidatorStakeEvent.reified().new({
+      typename: decodeFromJSONField(TypeName.reified(), field.typename),
       stakingPoolId: decodeFromJSONField(ID.reified(), field.stakingPoolId),
       amount: decodeFromJSONField("u64", field.amount),
     });
   }
 
-  static fromJSON<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
-    json: Record<string, any>,
-  ): IncreaseValidatorStakeEvent<ToPhantomTypeArgument<P>> {
+  static fromJSON(json: Record<string, any>): IncreaseValidatorStakeEvent {
     if (json.$typeName !== IncreaseValidatorStakeEvent.$typeName) {
       throw new Error("not a WithTwoGenerics json object");
     }
-    assertReifiedTypeArgsMatch(
-      composeSuiType(
-        IncreaseValidatorStakeEvent.$typeName,
-        extractType(typeArg),
-      ),
-      json.$typeArgs,
-      [typeArg],
-    );
 
-    return IncreaseValidatorStakeEvent.fromJSONField(typeArg, json);
+    return IncreaseValidatorStakeEvent.fromJSONField(json);
   }
 
-  static fromSuiParsedData<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
+  static fromSuiParsedData(
     content: SuiParsedData,
-  ): IncreaseValidatorStakeEvent<ToPhantomTypeArgument<P>> {
+  ): IncreaseValidatorStakeEvent {
     if (content.dataType !== "moveObject") {
       throw new Error("not an object");
     }
@@ -1276,13 +1295,10 @@ export class IncreaseValidatorStakeEvent<P extends PhantomTypeArgument>
         `object at ${(content.fields as any).id} is not a IncreaseValidatorStakeEvent object`,
       );
     }
-    return IncreaseValidatorStakeEvent.fromFieldsWithTypes(typeArg, content);
+    return IncreaseValidatorStakeEvent.fromFieldsWithTypes(content);
   }
 
-  static fromSuiObjectData<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
-    data: SuiObjectData,
-  ): IncreaseValidatorStakeEvent<ToPhantomTypeArgument<P>> {
+  static fromSuiObjectData(data: SuiObjectData): IncreaseValidatorStakeEvent {
     if (data.bcs) {
       if (
         data.bcs.dataType !== "moveObject" ||
@@ -1293,41 +1309,20 @@ export class IncreaseValidatorStakeEvent<P extends PhantomTypeArgument>
         );
       }
 
-      const gotTypeArgs = parseTypeName(data.bcs.type).typeArgs;
-      if (gotTypeArgs.length !== 1) {
-        throw new Error(
-          `type argument mismatch: expected 1 type argument but got '${gotTypeArgs.length}'`,
-        );
-      }
-      const gotTypeArg = compressSuiType(gotTypeArgs[0]);
-      const expectedTypeArg = compressSuiType(extractType(typeArg));
-      if (gotTypeArg !== compressSuiType(extractType(typeArg))) {
-        throw new Error(
-          `type argument mismatch: expected '${expectedTypeArg}' but got '${gotTypeArg}'`,
-        );
-      }
-
-      return IncreaseValidatorStakeEvent.fromBcs(
-        typeArg,
-        fromB64(data.bcs.bcsBytes),
-      );
+      return IncreaseValidatorStakeEvent.fromBcs(fromB64(data.bcs.bcsBytes));
     }
     if (data.content) {
-      return IncreaseValidatorStakeEvent.fromSuiParsedData(
-        typeArg,
-        data.content,
-      );
+      return IncreaseValidatorStakeEvent.fromSuiParsedData(data.content);
     }
     throw new Error(
       "Both `bcs` and `content` fields are missing from the data. Include `showBcs` or `showContent` in the request.",
     );
   }
 
-  static async fetch<P extends PhantomReified<PhantomTypeArgument>>(
+  static async fetch(
     client: SuiClient,
-    typeArg: P,
     id: string,
-  ): Promise<IncreaseValidatorStakeEvent<ToPhantomTypeArgument<P>>> {
+  ): Promise<IncreaseValidatorStakeEvent> {
     const res = await client.getObject({ id, options: { showBcs: true } });
     if (res.error) {
       throw new Error(
@@ -1343,7 +1338,192 @@ export class IncreaseValidatorStakeEvent<P extends PhantomTypeArgument>
       );
     }
 
-    return IncreaseValidatorStakeEvent.fromSuiObjectData(typeArg, res.data);
+    return IncreaseValidatorStakeEvent.fromSuiObjectData(res.data);
+  }
+}
+
+/* ============================== LIQUID_STAKING =============================== */
+
+export function isLIQUID_STAKING(type: string): boolean {
+  type = compressSuiType(type);
+  return type === `${PKG_V1}::liquid_staking::LIQUID_STAKING`;
+}
+
+export interface LIQUID_STAKINGFields {
+  dummyField: ToField<"bool">;
+}
+
+export type LIQUID_STAKINGReified = Reified<
+  LIQUID_STAKING,
+  LIQUID_STAKINGFields
+>;
+
+export class LIQUID_STAKING implements StructClass {
+  __StructClass = true as const;
+
+  static readonly $typeName = `${PKG_V1}::liquid_staking::LIQUID_STAKING`;
+  static readonly $numTypeParams = 0;
+  static readonly $isPhantom = [] as const;
+
+  readonly $typeName = LIQUID_STAKING.$typeName;
+  readonly $fullTypeName: `${typeof PKG_V1}::liquid_staking::LIQUID_STAKING`;
+  readonly $typeArgs: [];
+  readonly $isPhantom = LIQUID_STAKING.$isPhantom;
+
+  readonly dummyField: ToField<"bool">;
+
+  private constructor(typeArgs: [], fields: LIQUID_STAKINGFields) {
+    this.$fullTypeName = composeSuiType(
+      LIQUID_STAKING.$typeName,
+      ...typeArgs,
+    ) as `${typeof PKG_V1}::liquid_staking::LIQUID_STAKING`;
+    this.$typeArgs = typeArgs;
+
+    this.dummyField = fields.dummyField;
+  }
+
+  static reified(): LIQUID_STAKINGReified {
+    return {
+      typeName: LIQUID_STAKING.$typeName,
+      fullTypeName: composeSuiType(
+        LIQUID_STAKING.$typeName,
+        ...[],
+      ) as `${typeof PKG_V1}::liquid_staking::LIQUID_STAKING`,
+      typeArgs: [] as [],
+      isPhantom: LIQUID_STAKING.$isPhantom,
+      reifiedTypeArgs: [],
+      fromFields: (fields: Record<string, any>) =>
+        LIQUID_STAKING.fromFields(fields),
+      fromFieldsWithTypes: (item: FieldsWithTypes) =>
+        LIQUID_STAKING.fromFieldsWithTypes(item),
+      fromBcs: (data: Uint8Array) => LIQUID_STAKING.fromBcs(data),
+      bcs: LIQUID_STAKING.bcs,
+      fromJSONField: (field: any) => LIQUID_STAKING.fromJSONField(field),
+      fromJSON: (json: Record<string, any>) => LIQUID_STAKING.fromJSON(json),
+      fromSuiParsedData: (content: SuiParsedData) =>
+        LIQUID_STAKING.fromSuiParsedData(content),
+      fromSuiObjectData: (content: SuiObjectData) =>
+        LIQUID_STAKING.fromSuiObjectData(content),
+      fetch: async (client: SuiClient, id: string) =>
+        LIQUID_STAKING.fetch(client, id),
+      new: (fields: LIQUID_STAKINGFields) => {
+        return new LIQUID_STAKING([], fields);
+      },
+      kind: "StructClassReified",
+    };
+  }
+
+  static get r() {
+    return LIQUID_STAKING.reified();
+  }
+
+  static phantom(): PhantomReified<ToTypeStr<LIQUID_STAKING>> {
+    return phantom(LIQUID_STAKING.reified());
+  }
+  static get p() {
+    return LIQUID_STAKING.phantom();
+  }
+
+  static get bcs() {
+    return bcs.struct("LIQUID_STAKING", {
+      dummy_field: bcs.bool(),
+    });
+  }
+
+  static fromFields(fields: Record<string, any>): LIQUID_STAKING {
+    return LIQUID_STAKING.reified().new({
+      dummyField: decodeFromFields("bool", fields.dummy_field),
+    });
+  }
+
+  static fromFieldsWithTypes(item: FieldsWithTypes): LIQUID_STAKING {
+    if (!isLIQUID_STAKING(item.type)) {
+      throw new Error("not a LIQUID_STAKING type");
+    }
+
+    return LIQUID_STAKING.reified().new({
+      dummyField: decodeFromFieldsWithTypes("bool", item.fields.dummy_field),
+    });
+  }
+
+  static fromBcs(data: Uint8Array): LIQUID_STAKING {
+    return LIQUID_STAKING.fromFields(LIQUID_STAKING.bcs.parse(data));
+  }
+
+  toJSONField() {
+    return {
+      dummyField: this.dummyField,
+    };
+  }
+
+  toJSON() {
+    return {
+      $typeName: this.$typeName,
+      $typeArgs: this.$typeArgs,
+      ...this.toJSONField(),
+    };
+  }
+
+  static fromJSONField(field: any): LIQUID_STAKING {
+    return LIQUID_STAKING.reified().new({
+      dummyField: decodeFromJSONField("bool", field.dummyField),
+    });
+  }
+
+  static fromJSON(json: Record<string, any>): LIQUID_STAKING {
+    if (json.$typeName !== LIQUID_STAKING.$typeName) {
+      throw new Error("not a WithTwoGenerics json object");
+    }
+
+    return LIQUID_STAKING.fromJSONField(json);
+  }
+
+  static fromSuiParsedData(content: SuiParsedData): LIQUID_STAKING {
+    if (content.dataType !== "moveObject") {
+      throw new Error("not an object");
+    }
+    if (!isLIQUID_STAKING(content.type)) {
+      throw new Error(
+        `object at ${(content.fields as any).id} is not a LIQUID_STAKING object`,
+      );
+    }
+    return LIQUID_STAKING.fromFieldsWithTypes(content);
+  }
+
+  static fromSuiObjectData(data: SuiObjectData): LIQUID_STAKING {
+    if (data.bcs) {
+      if (
+        data.bcs.dataType !== "moveObject" ||
+        !isLIQUID_STAKING(data.bcs.type)
+      ) {
+        throw new Error(`object at is not a LIQUID_STAKING object`);
+      }
+
+      return LIQUID_STAKING.fromBcs(fromB64(data.bcs.bcsBytes));
+    }
+    if (data.content) {
+      return LIQUID_STAKING.fromSuiParsedData(data.content);
+    }
+    throw new Error(
+      "Both `bcs` and `content` fields are missing from the data. Include `showBcs` or `showContent` in the request.",
+    );
+  }
+
+  static async fetch(client: SuiClient, id: string): Promise<LIQUID_STAKING> {
+    const res = await client.getObject({ id, options: { showBcs: true } });
+    if (res.error) {
+      throw new Error(
+        `error fetching LIQUID_STAKING object at id ${id}: ${res.error.code}`,
+      );
+    }
+    if (
+      res.data?.bcs?.dataType !== "moveObject" ||
+      !isLIQUID_STAKING(res.data.bcs.type)
+    ) {
+      throw new Error(`object at id ${id} is not a LIQUID_STAKING object`);
+    }
+
+    return LIQUID_STAKING.fromSuiObjectData(res.data);
   }
 }
 
@@ -1691,128 +1871,117 @@ export class LiquidStakingInfo<P extends PhantomTypeArgument>
 
 export function isMintEvent(type: string): boolean {
   type = compressSuiType(type);
-  return type.startsWith(`${PKG_V1}::liquid_staking::MintEvent` + "<");
+  return type === `${PKG_V1}::liquid_staking::MintEvent`;
 }
 
-export interface MintEventFields<P extends PhantomTypeArgument> {
+export interface MintEventFields {
+  typename: ToField<TypeName>;
   suiAmountIn: ToField<"u64">;
   lstAmountOut: ToField<"u64">;
   feeAmount: ToField<"u64">;
 }
 
-export type MintEventReified<P extends PhantomTypeArgument> = Reified<
-  MintEvent<P>,
-  MintEventFields<P>
->;
+export type MintEventReified = Reified<MintEvent, MintEventFields>;
 
-export class MintEvent<P extends PhantomTypeArgument> implements StructClass {
+export class MintEvent implements StructClass {
   __StructClass = true as const;
 
   static readonly $typeName = `${PKG_V1}::liquid_staking::MintEvent`;
-  static readonly $numTypeParams = 1;
-  static readonly $isPhantom = [true] as const;
+  static readonly $numTypeParams = 0;
+  static readonly $isPhantom = [] as const;
 
   readonly $typeName = MintEvent.$typeName;
-  readonly $fullTypeName: `${typeof PKG_V1}::liquid_staking::MintEvent<${PhantomToTypeStr<P>}>`;
-  readonly $typeArgs: [PhantomToTypeStr<P>];
+  readonly $fullTypeName: `${typeof PKG_V1}::liquid_staking::MintEvent`;
+  readonly $typeArgs: [];
   readonly $isPhantom = MintEvent.$isPhantom;
 
+  readonly typename: ToField<TypeName>;
   readonly suiAmountIn: ToField<"u64">;
   readonly lstAmountOut: ToField<"u64">;
   readonly feeAmount: ToField<"u64">;
 
-  private constructor(
-    typeArgs: [PhantomToTypeStr<P>],
-    fields: MintEventFields<P>,
-  ) {
+  private constructor(typeArgs: [], fields: MintEventFields) {
     this.$fullTypeName = composeSuiType(
       MintEvent.$typeName,
       ...typeArgs,
-    ) as `${typeof PKG_V1}::liquid_staking::MintEvent<${PhantomToTypeStr<P>}>`;
+    ) as `${typeof PKG_V1}::liquid_staking::MintEvent`;
     this.$typeArgs = typeArgs;
 
+    this.typename = fields.typename;
     this.suiAmountIn = fields.suiAmountIn;
     this.lstAmountOut = fields.lstAmountOut;
     this.feeAmount = fields.feeAmount;
   }
 
-  static reified<P extends PhantomReified<PhantomTypeArgument>>(
-    P: P,
-  ): MintEventReified<ToPhantomTypeArgument<P>> {
+  static reified(): MintEventReified {
     return {
       typeName: MintEvent.$typeName,
       fullTypeName: composeSuiType(
         MintEvent.$typeName,
-        ...[extractType(P)],
-      ) as `${typeof PKG_V1}::liquid_staking::MintEvent<${PhantomToTypeStr<ToPhantomTypeArgument<P>>}>`,
-      typeArgs: [extractType(P)] as [
-        PhantomToTypeStr<ToPhantomTypeArgument<P>>,
-      ],
+        ...[],
+      ) as `${typeof PKG_V1}::liquid_staking::MintEvent`,
+      typeArgs: [] as [],
       isPhantom: MintEvent.$isPhantom,
-      reifiedTypeArgs: [P],
-      fromFields: (fields: Record<string, any>) =>
-        MintEvent.fromFields(P, fields),
+      reifiedTypeArgs: [],
+      fromFields: (fields: Record<string, any>) => MintEvent.fromFields(fields),
       fromFieldsWithTypes: (item: FieldsWithTypes) =>
-        MintEvent.fromFieldsWithTypes(P, item),
-      fromBcs: (data: Uint8Array) => MintEvent.fromBcs(P, data),
+        MintEvent.fromFieldsWithTypes(item),
+      fromBcs: (data: Uint8Array) => MintEvent.fromBcs(data),
       bcs: MintEvent.bcs,
-      fromJSONField: (field: any) => MintEvent.fromJSONField(P, field),
-      fromJSON: (json: Record<string, any>) => MintEvent.fromJSON(P, json),
+      fromJSONField: (field: any) => MintEvent.fromJSONField(field),
+      fromJSON: (json: Record<string, any>) => MintEvent.fromJSON(json),
       fromSuiParsedData: (content: SuiParsedData) =>
-        MintEvent.fromSuiParsedData(P, content),
+        MintEvent.fromSuiParsedData(content),
       fromSuiObjectData: (content: SuiObjectData) =>
-        MintEvent.fromSuiObjectData(P, content),
+        MintEvent.fromSuiObjectData(content),
       fetch: async (client: SuiClient, id: string) =>
-        MintEvent.fetch(client, P, id),
-      new: (fields: MintEventFields<ToPhantomTypeArgument<P>>) => {
-        return new MintEvent([extractType(P)], fields);
+        MintEvent.fetch(client, id),
+      new: (fields: MintEventFields) => {
+        return new MintEvent([], fields);
       },
       kind: "StructClassReified",
     };
   }
 
   static get r() {
-    return MintEvent.reified;
+    return MintEvent.reified();
   }
 
-  static phantom<P extends PhantomReified<PhantomTypeArgument>>(
-    P: P,
-  ): PhantomReified<ToTypeStr<MintEvent<ToPhantomTypeArgument<P>>>> {
-    return phantom(MintEvent.reified(P));
+  static phantom(): PhantomReified<ToTypeStr<MintEvent>> {
+    return phantom(MintEvent.reified());
   }
   static get p() {
-    return MintEvent.phantom;
+    return MintEvent.phantom();
   }
 
   static get bcs() {
     return bcs.struct("MintEvent", {
+      typename: TypeName.bcs,
       sui_amount_in: bcs.u64(),
       lst_amount_out: bcs.u64(),
       fee_amount: bcs.u64(),
     });
   }
 
-  static fromFields<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
-    fields: Record<string, any>,
-  ): MintEvent<ToPhantomTypeArgument<P>> {
-    return MintEvent.reified(typeArg).new({
+  static fromFields(fields: Record<string, any>): MintEvent {
+    return MintEvent.reified().new({
+      typename: decodeFromFields(TypeName.reified(), fields.typename),
       suiAmountIn: decodeFromFields("u64", fields.sui_amount_in),
       lstAmountOut: decodeFromFields("u64", fields.lst_amount_out),
       feeAmount: decodeFromFields("u64", fields.fee_amount),
     });
   }
 
-  static fromFieldsWithTypes<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
-    item: FieldsWithTypes,
-  ): MintEvent<ToPhantomTypeArgument<P>> {
+  static fromFieldsWithTypes(item: FieldsWithTypes): MintEvent {
     if (!isMintEvent(item.type)) {
       throw new Error("not a MintEvent type");
     }
-    assertFieldsWithTypesArgsMatch(item, [typeArg]);
 
-    return MintEvent.reified(typeArg).new({
+    return MintEvent.reified().new({
+      typename: decodeFromFieldsWithTypes(
+        TypeName.reified(),
+        item.fields.typename,
+      ),
       suiAmountIn: decodeFromFieldsWithTypes("u64", item.fields.sui_amount_in),
       lstAmountOut: decodeFromFieldsWithTypes(
         "u64",
@@ -1822,15 +1991,13 @@ export class MintEvent<P extends PhantomTypeArgument> implements StructClass {
     });
   }
 
-  static fromBcs<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
-    data: Uint8Array,
-  ): MintEvent<ToPhantomTypeArgument<P>> {
-    return MintEvent.fromFields(typeArg, MintEvent.bcs.parse(data));
+  static fromBcs(data: Uint8Array): MintEvent {
+    return MintEvent.fromFields(MintEvent.bcs.parse(data));
   }
 
   toJSONField() {
     return {
+      typename: this.typename.toJSONField(),
       suiAmountIn: this.suiAmountIn.toString(),
       lstAmountOut: this.lstAmountOut.toString(),
       feeAmount: this.feeAmount.toString(),
@@ -1845,37 +2012,24 @@ export class MintEvent<P extends PhantomTypeArgument> implements StructClass {
     };
   }
 
-  static fromJSONField<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
-    field: any,
-  ): MintEvent<ToPhantomTypeArgument<P>> {
-    return MintEvent.reified(typeArg).new({
+  static fromJSONField(field: any): MintEvent {
+    return MintEvent.reified().new({
+      typename: decodeFromJSONField(TypeName.reified(), field.typename),
       suiAmountIn: decodeFromJSONField("u64", field.suiAmountIn),
       lstAmountOut: decodeFromJSONField("u64", field.lstAmountOut),
       feeAmount: decodeFromJSONField("u64", field.feeAmount),
     });
   }
 
-  static fromJSON<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
-    json: Record<string, any>,
-  ): MintEvent<ToPhantomTypeArgument<P>> {
+  static fromJSON(json: Record<string, any>): MintEvent {
     if (json.$typeName !== MintEvent.$typeName) {
       throw new Error("not a WithTwoGenerics json object");
     }
-    assertReifiedTypeArgsMatch(
-      composeSuiType(MintEvent.$typeName, extractType(typeArg)),
-      json.$typeArgs,
-      [typeArg],
-    );
 
-    return MintEvent.fromJSONField(typeArg, json);
+    return MintEvent.fromJSONField(json);
   }
 
-  static fromSuiParsedData<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
-    content: SuiParsedData,
-  ): MintEvent<ToPhantomTypeArgument<P>> {
+  static fromSuiParsedData(content: SuiParsedData): MintEvent {
     if (content.dataType !== "moveObject") {
       throw new Error("not an object");
     }
@@ -1884,47 +2038,26 @@ export class MintEvent<P extends PhantomTypeArgument> implements StructClass {
         `object at ${(content.fields as any).id} is not a MintEvent object`,
       );
     }
-    return MintEvent.fromFieldsWithTypes(typeArg, content);
+    return MintEvent.fromFieldsWithTypes(content);
   }
 
-  static fromSuiObjectData<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
-    data: SuiObjectData,
-  ): MintEvent<ToPhantomTypeArgument<P>> {
+  static fromSuiObjectData(data: SuiObjectData): MintEvent {
     if (data.bcs) {
       if (data.bcs.dataType !== "moveObject" || !isMintEvent(data.bcs.type)) {
         throw new Error(`object at is not a MintEvent object`);
       }
 
-      const gotTypeArgs = parseTypeName(data.bcs.type).typeArgs;
-      if (gotTypeArgs.length !== 1) {
-        throw new Error(
-          `type argument mismatch: expected 1 type argument but got '${gotTypeArgs.length}'`,
-        );
-      }
-      const gotTypeArg = compressSuiType(gotTypeArgs[0]);
-      const expectedTypeArg = compressSuiType(extractType(typeArg));
-      if (gotTypeArg !== compressSuiType(extractType(typeArg))) {
-        throw new Error(
-          `type argument mismatch: expected '${expectedTypeArg}' but got '${gotTypeArg}'`,
-        );
-      }
-
-      return MintEvent.fromBcs(typeArg, fromB64(data.bcs.bcsBytes));
+      return MintEvent.fromBcs(fromB64(data.bcs.bcsBytes));
     }
     if (data.content) {
-      return MintEvent.fromSuiParsedData(typeArg, data.content);
+      return MintEvent.fromSuiParsedData(data.content);
     }
     throw new Error(
       "Both `bcs` and `content` fields are missing from the data. Include `showBcs` or `showContent` in the request.",
     );
   }
 
-  static async fetch<P extends PhantomReified<PhantomTypeArgument>>(
-    client: SuiClient,
-    typeArg: P,
-    id: string,
-  ): Promise<MintEvent<ToPhantomTypeArgument<P>>> {
+  static async fetch(client: SuiClient, id: string): Promise<MintEvent> {
     const res = await client.getObject({ id, options: { showBcs: true } });
     if (res.error) {
       throw new Error(
@@ -1938,7 +2071,7 @@ export class MintEvent<P extends PhantomTypeArgument> implements StructClass {
       throw new Error(`object at id ${id} is not a MintEvent object`);
     }
 
-    return MintEvent.fromSuiObjectData(typeArg, res.data);
+    return MintEvent.fromSuiObjectData(res.data);
   }
 }
 
@@ -1946,128 +2079,118 @@ export class MintEvent<P extends PhantomTypeArgument> implements StructClass {
 
 export function isRedeemEvent(type: string): boolean {
   type = compressSuiType(type);
-  return type.startsWith(`${PKG_V1}::liquid_staking::RedeemEvent` + "<");
+  return type === `${PKG_V1}::liquid_staking::RedeemEvent`;
 }
 
-export interface RedeemEventFields<P extends PhantomTypeArgument> {
+export interface RedeemEventFields {
+  typename: ToField<TypeName>;
   lstAmountIn: ToField<"u64">;
   suiAmountOut: ToField<"u64">;
   feeAmount: ToField<"u64">;
 }
 
-export type RedeemEventReified<P extends PhantomTypeArgument> = Reified<
-  RedeemEvent<P>,
-  RedeemEventFields<P>
->;
+export type RedeemEventReified = Reified<RedeemEvent, RedeemEventFields>;
 
-export class RedeemEvent<P extends PhantomTypeArgument> implements StructClass {
+export class RedeemEvent implements StructClass {
   __StructClass = true as const;
 
   static readonly $typeName = `${PKG_V1}::liquid_staking::RedeemEvent`;
-  static readonly $numTypeParams = 1;
-  static readonly $isPhantom = [true] as const;
+  static readonly $numTypeParams = 0;
+  static readonly $isPhantom = [] as const;
 
   readonly $typeName = RedeemEvent.$typeName;
-  readonly $fullTypeName: `${typeof PKG_V1}::liquid_staking::RedeemEvent<${PhantomToTypeStr<P>}>`;
-  readonly $typeArgs: [PhantomToTypeStr<P>];
+  readonly $fullTypeName: `${typeof PKG_V1}::liquid_staking::RedeemEvent`;
+  readonly $typeArgs: [];
   readonly $isPhantom = RedeemEvent.$isPhantom;
 
+  readonly typename: ToField<TypeName>;
   readonly lstAmountIn: ToField<"u64">;
   readonly suiAmountOut: ToField<"u64">;
   readonly feeAmount: ToField<"u64">;
 
-  private constructor(
-    typeArgs: [PhantomToTypeStr<P>],
-    fields: RedeemEventFields<P>,
-  ) {
+  private constructor(typeArgs: [], fields: RedeemEventFields) {
     this.$fullTypeName = composeSuiType(
       RedeemEvent.$typeName,
       ...typeArgs,
-    ) as `${typeof PKG_V1}::liquid_staking::RedeemEvent<${PhantomToTypeStr<P>}>`;
+    ) as `${typeof PKG_V1}::liquid_staking::RedeemEvent`;
     this.$typeArgs = typeArgs;
 
+    this.typename = fields.typename;
     this.lstAmountIn = fields.lstAmountIn;
     this.suiAmountOut = fields.suiAmountOut;
     this.feeAmount = fields.feeAmount;
   }
 
-  static reified<P extends PhantomReified<PhantomTypeArgument>>(
-    P: P,
-  ): RedeemEventReified<ToPhantomTypeArgument<P>> {
+  static reified(): RedeemEventReified {
     return {
       typeName: RedeemEvent.$typeName,
       fullTypeName: composeSuiType(
         RedeemEvent.$typeName,
-        ...[extractType(P)],
-      ) as `${typeof PKG_V1}::liquid_staking::RedeemEvent<${PhantomToTypeStr<ToPhantomTypeArgument<P>>}>`,
-      typeArgs: [extractType(P)] as [
-        PhantomToTypeStr<ToPhantomTypeArgument<P>>,
-      ],
+        ...[],
+      ) as `${typeof PKG_V1}::liquid_staking::RedeemEvent`,
+      typeArgs: [] as [],
       isPhantom: RedeemEvent.$isPhantom,
-      reifiedTypeArgs: [P],
+      reifiedTypeArgs: [],
       fromFields: (fields: Record<string, any>) =>
-        RedeemEvent.fromFields(P, fields),
+        RedeemEvent.fromFields(fields),
       fromFieldsWithTypes: (item: FieldsWithTypes) =>
-        RedeemEvent.fromFieldsWithTypes(P, item),
-      fromBcs: (data: Uint8Array) => RedeemEvent.fromBcs(P, data),
+        RedeemEvent.fromFieldsWithTypes(item),
+      fromBcs: (data: Uint8Array) => RedeemEvent.fromBcs(data),
       bcs: RedeemEvent.bcs,
-      fromJSONField: (field: any) => RedeemEvent.fromJSONField(P, field),
-      fromJSON: (json: Record<string, any>) => RedeemEvent.fromJSON(P, json),
+      fromJSONField: (field: any) => RedeemEvent.fromJSONField(field),
+      fromJSON: (json: Record<string, any>) => RedeemEvent.fromJSON(json),
       fromSuiParsedData: (content: SuiParsedData) =>
-        RedeemEvent.fromSuiParsedData(P, content),
+        RedeemEvent.fromSuiParsedData(content),
       fromSuiObjectData: (content: SuiObjectData) =>
-        RedeemEvent.fromSuiObjectData(P, content),
+        RedeemEvent.fromSuiObjectData(content),
       fetch: async (client: SuiClient, id: string) =>
-        RedeemEvent.fetch(client, P, id),
-      new: (fields: RedeemEventFields<ToPhantomTypeArgument<P>>) => {
-        return new RedeemEvent([extractType(P)], fields);
+        RedeemEvent.fetch(client, id),
+      new: (fields: RedeemEventFields) => {
+        return new RedeemEvent([], fields);
       },
       kind: "StructClassReified",
     };
   }
 
   static get r() {
-    return RedeemEvent.reified;
+    return RedeemEvent.reified();
   }
 
-  static phantom<P extends PhantomReified<PhantomTypeArgument>>(
-    P: P,
-  ): PhantomReified<ToTypeStr<RedeemEvent<ToPhantomTypeArgument<P>>>> {
-    return phantom(RedeemEvent.reified(P));
+  static phantom(): PhantomReified<ToTypeStr<RedeemEvent>> {
+    return phantom(RedeemEvent.reified());
   }
   static get p() {
-    return RedeemEvent.phantom;
+    return RedeemEvent.phantom();
   }
 
   static get bcs() {
     return bcs.struct("RedeemEvent", {
+      typename: TypeName.bcs,
       lst_amount_in: bcs.u64(),
       sui_amount_out: bcs.u64(),
       fee_amount: bcs.u64(),
     });
   }
 
-  static fromFields<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
-    fields: Record<string, any>,
-  ): RedeemEvent<ToPhantomTypeArgument<P>> {
-    return RedeemEvent.reified(typeArg).new({
+  static fromFields(fields: Record<string, any>): RedeemEvent {
+    return RedeemEvent.reified().new({
+      typename: decodeFromFields(TypeName.reified(), fields.typename),
       lstAmountIn: decodeFromFields("u64", fields.lst_amount_in),
       suiAmountOut: decodeFromFields("u64", fields.sui_amount_out),
       feeAmount: decodeFromFields("u64", fields.fee_amount),
     });
   }
 
-  static fromFieldsWithTypes<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
-    item: FieldsWithTypes,
-  ): RedeemEvent<ToPhantomTypeArgument<P>> {
+  static fromFieldsWithTypes(item: FieldsWithTypes): RedeemEvent {
     if (!isRedeemEvent(item.type)) {
       throw new Error("not a RedeemEvent type");
     }
-    assertFieldsWithTypesArgsMatch(item, [typeArg]);
 
-    return RedeemEvent.reified(typeArg).new({
+    return RedeemEvent.reified().new({
+      typename: decodeFromFieldsWithTypes(
+        TypeName.reified(),
+        item.fields.typename,
+      ),
       lstAmountIn: decodeFromFieldsWithTypes("u64", item.fields.lst_amount_in),
       suiAmountOut: decodeFromFieldsWithTypes(
         "u64",
@@ -2077,15 +2200,13 @@ export class RedeemEvent<P extends PhantomTypeArgument> implements StructClass {
     });
   }
 
-  static fromBcs<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
-    data: Uint8Array,
-  ): RedeemEvent<ToPhantomTypeArgument<P>> {
-    return RedeemEvent.fromFields(typeArg, RedeemEvent.bcs.parse(data));
+  static fromBcs(data: Uint8Array): RedeemEvent {
+    return RedeemEvent.fromFields(RedeemEvent.bcs.parse(data));
   }
 
   toJSONField() {
     return {
+      typename: this.typename.toJSONField(),
       lstAmountIn: this.lstAmountIn.toString(),
       suiAmountOut: this.suiAmountOut.toString(),
       feeAmount: this.feeAmount.toString(),
@@ -2100,37 +2221,24 @@ export class RedeemEvent<P extends PhantomTypeArgument> implements StructClass {
     };
   }
 
-  static fromJSONField<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
-    field: any,
-  ): RedeemEvent<ToPhantomTypeArgument<P>> {
-    return RedeemEvent.reified(typeArg).new({
+  static fromJSONField(field: any): RedeemEvent {
+    return RedeemEvent.reified().new({
+      typename: decodeFromJSONField(TypeName.reified(), field.typename),
       lstAmountIn: decodeFromJSONField("u64", field.lstAmountIn),
       suiAmountOut: decodeFromJSONField("u64", field.suiAmountOut),
       feeAmount: decodeFromJSONField("u64", field.feeAmount),
     });
   }
 
-  static fromJSON<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
-    json: Record<string, any>,
-  ): RedeemEvent<ToPhantomTypeArgument<P>> {
+  static fromJSON(json: Record<string, any>): RedeemEvent {
     if (json.$typeName !== RedeemEvent.$typeName) {
       throw new Error("not a WithTwoGenerics json object");
     }
-    assertReifiedTypeArgsMatch(
-      composeSuiType(RedeemEvent.$typeName, extractType(typeArg)),
-      json.$typeArgs,
-      [typeArg],
-    );
 
-    return RedeemEvent.fromJSONField(typeArg, json);
+    return RedeemEvent.fromJSONField(json);
   }
 
-  static fromSuiParsedData<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
-    content: SuiParsedData,
-  ): RedeemEvent<ToPhantomTypeArgument<P>> {
+  static fromSuiParsedData(content: SuiParsedData): RedeemEvent {
     if (content.dataType !== "moveObject") {
       throw new Error("not an object");
     }
@@ -2139,47 +2247,26 @@ export class RedeemEvent<P extends PhantomTypeArgument> implements StructClass {
         `object at ${(content.fields as any).id} is not a RedeemEvent object`,
       );
     }
-    return RedeemEvent.fromFieldsWithTypes(typeArg, content);
+    return RedeemEvent.fromFieldsWithTypes(content);
   }
 
-  static fromSuiObjectData<P extends PhantomReified<PhantomTypeArgument>>(
-    typeArg: P,
-    data: SuiObjectData,
-  ): RedeemEvent<ToPhantomTypeArgument<P>> {
+  static fromSuiObjectData(data: SuiObjectData): RedeemEvent {
     if (data.bcs) {
       if (data.bcs.dataType !== "moveObject" || !isRedeemEvent(data.bcs.type)) {
         throw new Error(`object at is not a RedeemEvent object`);
       }
 
-      const gotTypeArgs = parseTypeName(data.bcs.type).typeArgs;
-      if (gotTypeArgs.length !== 1) {
-        throw new Error(
-          `type argument mismatch: expected 1 type argument but got '${gotTypeArgs.length}'`,
-        );
-      }
-      const gotTypeArg = compressSuiType(gotTypeArgs[0]);
-      const expectedTypeArg = compressSuiType(extractType(typeArg));
-      if (gotTypeArg !== compressSuiType(extractType(typeArg))) {
-        throw new Error(
-          `type argument mismatch: expected '${expectedTypeArg}' but got '${gotTypeArg}'`,
-        );
-      }
-
-      return RedeemEvent.fromBcs(typeArg, fromB64(data.bcs.bcsBytes));
+      return RedeemEvent.fromBcs(fromB64(data.bcs.bcsBytes));
     }
     if (data.content) {
-      return RedeemEvent.fromSuiParsedData(typeArg, data.content);
+      return RedeemEvent.fromSuiParsedData(data.content);
     }
     throw new Error(
       "Both `bcs` and `content` fields are missing from the data. Include `showBcs` or `showContent` in the request.",
     );
   }
 
-  static async fetch<P extends PhantomReified<PhantomTypeArgument>>(
-    client: SuiClient,
-    typeArg: P,
-    id: string,
-  ): Promise<RedeemEvent<ToPhantomTypeArgument<P>>> {
+  static async fetch(client: SuiClient, id: string): Promise<RedeemEvent> {
     const res = await client.getObject({ id, options: { showBcs: true } });
     if (res.error) {
       throw new Error(
@@ -2193,6 +2280,6 @@ export class RedeemEvent<P extends PhantomTypeArgument> implements StructClass {
       throw new Error(`object at id ${id} is not a RedeemEvent object`);
     }
 
-    return RedeemEvent.fromSuiObjectData(typeArg, res.data);
+    return RedeemEvent.fromSuiObjectData(res.data);
   }
 }

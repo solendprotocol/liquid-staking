@@ -34,3 +34,17 @@ dependencies = [
 compiler-version = "1.34.2"
 edition = "2024.beta"
 flavor = "sui"
+
+[env]
+
+[env.testnet]
+chain-id = "4c78adac"
+original-published-id = "0x054acc66b4e75276f5c0adc18468170b9d46ccd83cfd00d148af82982a2c0fc6"
+latest-published-id = "0x054acc66b4e75276f5c0adc18468170b9d46ccd83cfd00d148af82982a2c0fc6"
+published-version = "1"
+
+[env.mainnet]
+chain-id = "35834a8a"
+original-published-id = "0xcfbcad8e0444ca85ad7ee28054585d12a7487bdbd83569ded988ca13441bf16e"
+latest-published-id = "0xcfbcad8e0444ca85ad7ee28054585d12a7487bdbd83569ded988ca13441bf16e"
+published-version = "1"

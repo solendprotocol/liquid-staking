@@ -75,6 +75,10 @@ export function registerClasses(loader: StructClassLoader) {
   loader.register(tableVec.TableVec);
   loader.register(priorityQueue.Entry);
   loader.register(priorityQueue.PriorityQueue);
+  loader.register(package_.Publisher);
+  loader.register(package_.UpgradeCap);
+  loader.register(package_.UpgradeReceipt);
+  loader.register(package_.UpgradeTicket);
   loader.register(authenticatorState.ActiveJwk);
   loader.register(authenticatorState.AuthenticatorState);
   loader.register(authenticatorState.AuthenticatorStateInner);
@@ -89,10 +93,6 @@ export function registerClasses(loader: StructClassLoader) {
   loader.register(borrow.Borrow);
   loader.register(borrow.Referent);
   loader.register(clock.Clock);
-  loader.register(package_.Publisher);
-  loader.register(package_.UpgradeCap);
-  loader.register(package_.UpgradeReceipt);
-  loader.register(package_.UpgradeTicket);
   loader.register(display.Display);
   loader.register(display.DisplayCreated);
   loader.register(display.VersionUpdated);
