@@ -1,14 +1,11 @@
 import { SuiClient } from "@mysten/sui/client";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
-import {
-  Transaction,
-  TransactionObjectInput,
-  TransactionResult,
-} from "@mysten/sui/transactions";
+import { Transaction } from "@mysten/sui/transactions";
 import { fromBase64 } from "@mysten/sui/utils";
 import { program } from "commander";
-import * as sdk from "./functions";
+
 import { PACKAGE_ID } from "./_generated/liquid_staking";
+import * as sdk from "./functions";
 import { LstClient } from "./functions";
 
 const LIQUID_STAKING_INFO = {
@@ -24,16 +21,16 @@ const keypair = Ed25519Keypair.fromSecretKey(
   fromBase64(process.env.SUI_SECRET_KEY!),
 );
 
-async function mint(options) {
-  let client = new SuiClient({ url: RPC_URL });
-  let lstClient = await LstClient.initialize(client, LIQUID_STAKING_INFO);
+async function mint(options: any) {
+  const client = new SuiClient({ url: RPC_URL });
+  const lstClient = await LstClient.initialize(client, LIQUID_STAKING_INFO);
 
-  let tx = new Transaction();
-  let [sui] = tx.splitCoins(tx.gas, [BigInt(options.amount)]);
-  let rSui = lstClient.mint(tx, sui);
+  const tx = new Transaction();
+  const [sui] = tx.splitCoins(tx.gas, [BigInt(options.amount)]);
+  const rSui = lstClient.mint(tx, sui);
   tx.transferObjects([rSui], keypair.toSuiAddress());
 
-  let txResponse = await client.signAndExecuteTransaction({
+  const txResponse = await client.signAndExecuteTransaction({
     transaction: tx,
     signer: keypair,
     options: {
@@ -46,17 +43,17 @@ async function mint(options) {
   console.log(txResponse);
 }
 
-async function redeem(options) {
-  let client = new SuiClient({ url: RPC_URL });
+async function redeem(options: any) {
+  const client = new SuiClient({ url: RPC_URL });
 
-  let lstCoins = await client.getCoins({
+  const lstCoins = await client.getCoins({
     owner: keypair.toSuiAddress(),
     coinType: LIQUID_STAKING_INFO.type,
     limit: 1000,
   });
 
-  let tx = new Transaction();
-  let lstClient = await LstClient.initialize(client, LIQUID_STAKING_INFO);
+  const tx = new Transaction();
+  const lstClient = await LstClient.initialize(client, LIQUID_STAKING_INFO);
 
   if (lstCoins.data.length > 1) {
     tx.mergeCoins(
@@ -65,14 +62,14 @@ async function redeem(options) {
     );
   }
 
-  let [lst] = tx.splitCoins(lstCoins.data[0].coinObjectId, [
+  const [lst] = tx.splitCoins(lstCoins.data[0].coinObjectId, [
     BigInt(options.amount),
   ]);
-  let sui = lstClient.redeemLst(tx, lst);
+  const sui = lstClient.redeemLst(tx, lst);
 
   tx.transferObjects([sui], keypair.toSuiAddress());
 
-  let txResponse = await client.signAndExecuteTransaction({
+  const txResponse = await client.signAndExecuteTransaction({
     transaction: tx,
     signer: keypair,
     options: {
@@ -85,19 +82,22 @@ async function redeem(options) {
   console.log(txResponse);
 }
 
-async function increaseValidatorStake(options) {
-  let client = new SuiClient({ url: RPC_URL });
-  let lstClient = await LstClient.initialize(client, LIQUID_STAKING_INFO);
+async function increaseValidatorStake(options: any) {
+  const client = new SuiClient({ url: RPC_URL });
+  const lstClient = await LstClient.initialize(client, LIQUID_STAKING_INFO);
 
-  let tx = new Transaction();
+  const adminCapId = await lstClient.getAdminCapId(keypair.toSuiAddress());
+  if (!adminCapId) return;
+
+  const tx = new Transaction();
   lstClient.increaseValidatorStake(
     tx,
-    await lstClient.getAdminCapId(keypair.toSuiAddress()),
+    adminCapId,
     options.validatorAddress,
     options.amount,
   );
 
-  let txResponse = await client.signAndExecuteTransaction({
+  const txResponse = await client.signAndExecuteTransaction({
     transaction: tx,
     signer: keypair,
     options: {
@@ -110,19 +110,22 @@ async function increaseValidatorStake(options) {
   console.log(txResponse);
 }
 
-async function decreaseValidatorStake(options) {
-  let client = new SuiClient({ url: RPC_URL });
-  let lstClient = await LstClient.initialize(client, LIQUID_STAKING_INFO);
+async function decreaseValidatorStake(options: any) {
+  const client = new SuiClient({ url: RPC_URL });
+  const lstClient = await LstClient.initialize(client, LIQUID_STAKING_INFO);
 
-  let tx = new Transaction();
+  const adminCapId = await lstClient.getAdminCapId(keypair.toSuiAddress());
+  if (!adminCapId) return;
+
+  const tx = new Transaction();
   lstClient.decreaseValidatorStake(
     tx,
-    await lstClient.getAdminCapId(keypair.toSuiAddress()),
+    adminCapId,
     options.validatorIndex,
     options.amount,
   );
 
-  let txResponse = await client.signAndExecuteTransaction({
+  const txResponse = await client.signAndExecuteTransaction({
     transaction: tx,
     signer: keypair,
     options: {
@@ -135,11 +138,11 @@ async function decreaseValidatorStake(options) {
   console.log(txResponse);
 }
 
-async function updateFees(options) {
-  let client = new SuiClient({ url: RPC_URL });
-  let lstClient = await LstClient.initialize(client, LIQUID_STAKING_INFO);
+async function updateFees(options: any) {
+  const client = new SuiClient({ url: RPC_URL });
+  const lstClient = await LstClient.initialize(client, LIQUID_STAKING_INFO);
 
-  let adminCap = (
+  const adminCap = (
     await client.getOwnedObjects({
       owner: keypair.toSuiAddress(),
       filter: {
@@ -147,11 +150,13 @@ async function updateFees(options) {
       },
     })
   ).data[0];
+  const adminCapId = adminCap.data?.objectId;
+  if (!adminCapId) return;
 
-  let tx = new Transaction();
-  lstClient.updateFees(tx, adminCap.data.objectId, options);
+  const tx = new Transaction();
+  lstClient.updateFees(tx, adminCapId, options);
 
-  let txResponse = await client.signAndExecuteTransaction({
+  const txResponse = await client.signAndExecuteTransaction({
     transaction: tx,
     signer: keypair,
     options: {
@@ -164,18 +169,18 @@ async function updateFees(options) {
   console.log(txResponse);
 }
 
-async function initializeWeightHook(options) {
-  let client = new SuiClient({ url: RPC_URL });
-  let lstClient = await LstClient.initialize(client, LIQUID_STAKING_INFO);
+async function initializeWeightHook(options: any) {
+  const client = new SuiClient({ url: RPC_URL });
+  const lstClient = await LstClient.initialize(client, LIQUID_STAKING_INFO);
 
-  let tx = new Transaction();
-  let weightHookAdminCap = lstClient.initializeWeightHook(
-    tx,
-    await lstClient.getAdminCapId(keypair.toSuiAddress()),
-  );
+  const adminCapId = await lstClient.getAdminCapId(keypair.toSuiAddress());
+  if (!adminCapId) return;
+
+  const tx = new Transaction();
+  const weightHookAdminCap = lstClient.initializeWeightHook(tx, adminCapId);
   tx.transferObjects([weightHookAdminCap], keypair.toSuiAddress());
 
-  let txResponse = await client.signAndExecuteTransaction({
+  const txResponse = await client.signAndExecuteTransaction({
     transaction: tx,
     signer: keypair,
     options: {
@@ -188,15 +193,15 @@ async function initializeWeightHook(options) {
   console.log(txResponse);
 }
 
-async function setValidatorAddressesAndWeights(options) {
-  let client = new SuiClient({ url: RPC_URL });
-  let lstClient = await LstClient.initialize(client, LIQUID_STAKING_INFO);
+async function setValidatorAddressesAndWeights(options: any) {
+  const client = new SuiClient({ url: RPC_URL });
+  const lstClient = await LstClient.initialize(client, LIQUID_STAKING_INFO);
 
   if (options.validators.length != options.weights.length) {
     throw new Error("Validators and weights arrays must be of the same length");
   }
 
-  let validatorAddressesAndWeights = new Map();
+  const validatorAddressesAndWeights = new Map();
   for (let i = 0; i < options.validators.length; i++) {
     validatorAddressesAndWeights.set(
       options.validators[i],
@@ -206,15 +211,20 @@ async function setValidatorAddressesAndWeights(options) {
 
   console.log(validatorAddressesAndWeights);
 
-  let tx = new Transaction();
+  const weightHookAdminCapId = await lstClient.getWeightHookAdminCapId(
+    keypair.toSuiAddress(),
+  );
+  if (!weightHookAdminCapId) return;
+
+  const tx = new Transaction();
   lstClient.setValidatorAddressesAndWeights(
     tx,
     LIQUID_STAKING_INFO.weightHookId,
-    await lstClient.getWeightHookAdminCapId(keypair.toSuiAddress()),
+    weightHookAdminCapId,
     validatorAddressesAndWeights,
   );
 
-  let txResponse = await client.signAndExecuteTransaction({
+  const txResponse = await client.signAndExecuteTransaction({
     transaction: tx,
     signer: keypair,
     options: {
@@ -227,14 +237,14 @@ async function setValidatorAddressesAndWeights(options) {
   console.log(txResponse);
 }
 
-async function rebalance(options) {
-  let client = new SuiClient({ url: RPC_URL });
-  let lstClient = await LstClient.initialize(client, LIQUID_STAKING_INFO);
+async function rebalance(options: any) {
+  const client = new SuiClient({ url: RPC_URL });
+  const lstClient = await LstClient.initialize(client, LIQUID_STAKING_INFO);
 
-  let tx = new Transaction();
+  const tx = new Transaction();
   lstClient.rebalance(tx, LIQUID_STAKING_INFO.weightHookId);
 
-  let txResponse = await client.signAndExecuteTransaction({
+  const txResponse = await client.signAndExecuteTransaction({
     transaction: tx,
     signer: keypair,
     options: {
@@ -305,7 +315,7 @@ program
   .description("initialize weight hook")
   .action(initializeWeightHook);
 
-function collect(pair, previous) {
+function collect(pair: any, previous: any) {
   const [key, value] = pair.split("=");
   if (!value) {
     throw new Error(`Invalid format for ${pair}. Use key=value format.`);

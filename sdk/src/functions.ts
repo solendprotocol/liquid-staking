@@ -1,12 +1,8 @@
 import { SuiClient } from "@mysten/sui/client";
-import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
-import {
-  Transaction,
-  TransactionObjectInput,
-  TransactionResult,
-} from "@mysten/sui/transactions";
-import * as generated from "./_generated/liquid_staking/liquid-staking/functions";
-import * as weightHookGenerated from "./_generated/liquid_staking/weight/functions";
+import { Transaction, TransactionObjectInput } from "@mysten/sui/transactions";
+
+import { phantom } from "./_generated/_framework/reified";
+import { PACKAGE_ID, setPublishedAt } from "./_generated/liquid_staking";
 import {
   newBuilder,
   setRedeemFeeBps,
@@ -14,10 +10,9 @@ import {
   setSuiMintFeeBps,
   toFeeConfig,
 } from "./_generated/liquid_staking/fees/functions";
-import { fromBase64 } from "@mysten/sui/utils";
+import * as generated from "./_generated/liquid_staking/liquid-staking/functions";
 import { LiquidStakingInfo } from "./_generated/liquid_staking/liquid-staking/structs";
-import { phantom } from "./_generated/_framework/reified";
-import { PACKAGE_ID, setPublishedAt } from "./_generated/liquid_staking";
+import * as weightHookGenerated from "./_generated/liquid_staking/weight/functions";
 import { WeightHook } from "./_generated/liquid_staking/weight/structs";
 
 export interface LiquidStakingObjectInfo {
@@ -69,8 +64,8 @@ export class LstClient {
     this.client = client;
   }
 
-  async getAdminCapId(address: string): Promise<string | null> {
-    let res = (
+  async getAdminCapId(address: string): Promise<string | null | undefined> {
+    const res = (
       await this.client.getOwnedObjects({
         owner: address,
         filter: {
@@ -83,11 +78,13 @@ export class LstClient {
       return null;
     }
 
-    return res[0].data.objectId;
+    return res[0].data?.objectId;
   }
 
-  async getWeightHookAdminCapId(address: string): Promise<string | null> {
-    let res = (
+  async getWeightHookAdminCapId(
+    address: string,
+  ): Promise<string | null | undefined> {
+    const res = (
       await this.client.getOwnedObjects({
         owner: address,
         filter: {
@@ -100,12 +97,12 @@ export class LstClient {
       return null;
     }
 
-    return res[0].data.objectId;
+    return res[0].data?.objectId;
   }
 
   // returns the lst object
   mint(tx: Transaction, suiCoinId: TransactionObjectInput) {
-    let [rSui] = generated.mint(tx, this.liquidStakingObject.type, {
+    const [rSui] = generated.mint(tx, this.liquidStakingObject.type, {
       self: this.liquidStakingObject.id,
       sui: suiCoinId,
       systemState: SUI_SYSTEM_STATE_ID,
@@ -116,7 +113,7 @@ export class LstClient {
 
   // returns the sui coin
   redeemLst(tx: Transaction, lstId: TransactionObjectInput) {
-    let [sui] = generated.redeem(tx, this.liquidStakingObject.type, {
+    const [sui] = generated.redeem(tx, this.liquidStakingObject.type, {
       self: this.liquidStakingObject.id,
       systemState: SUI_SYSTEM_STATE_ID,
       lst: lstId,
@@ -158,7 +155,7 @@ export class LstClient {
   }
 
   collectFees(tx: Transaction, adminCapId: TransactionObjectInput) {
-    let [sui] = generated.collectFees(tx, this.liquidStakingObject.type, {
+    const [sui] = generated.collectFees(tx, this.liquidStakingObject.type, {
       self: this.liquidStakingObject.id,
       systemState: SUI_SYSTEM_STATE_ID,
       adminCap: adminCapId,
@@ -198,7 +195,7 @@ export class LstClient {
       })[0];
     }
 
-    let [feeConfig] = toFeeConfig(tx, builder);
+    const [feeConfig] = toFeeConfig(tx, builder);
 
     generated.updateFees(tx, this.liquidStakingObject.type, {
       self: this.liquidStakingObject.id,
@@ -209,7 +206,7 @@ export class LstClient {
 
   // weight hook functions
   initializeWeightHook(tx: Transaction, adminCapId: TransactionObjectInput) {
-    let [weightHook, weightHookAdminCap] = weightHookGenerated.new_(
+    const [weightHook, weightHookAdminCap] = weightHookGenerated.new_(
       tx,
       this.liquidStakingObject.type,
       adminCapId,
@@ -232,7 +229,7 @@ export class LstClient {
     weightHookAdminCap: TransactionObjectInput,
     validatorAddressesAndWeights: Map<string, number>,
   ) {
-    let [vecMap] = tx.moveCall({
+    const [vecMap] = tx.moveCall({
       target: `0x2::vec_map::empty`,
       typeArguments: ["address", "u64"],
       arguments: [],
@@ -289,8 +286,8 @@ interface FeeConfigArgs {
 
 // only works for sSui
 export async function getSpringSuiApy(client: SuiClient) {
-  let res = await client.getValidatorsApy();
-  let validatorApy = res.apys.find(
+  const res = await client.getValidatorsApy();
+  const validatorApy = res.apys.find(
     (apy) => apy.address == SUILEND_VALIDATOR_ADDRESS,
   );
   return validatorApy?.apy;
