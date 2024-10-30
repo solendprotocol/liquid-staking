@@ -9,7 +9,8 @@ import {
 } from "./_generated/liquid_staking/fees/functions";
 import * as generated from "./_generated/liquid_staking/liquid-staking/functions";
 import { LiquidStakingInfo } from "./_generated/liquid_staking/liquid-staking/structs";
-import { LstClient } from "./functions";
+
+import { LstClient } from "./index";
 
 const keypair = Ed25519Keypair.fromSecretKey(
   fromBase64(process.env.SUI_SECRET_KEY!),

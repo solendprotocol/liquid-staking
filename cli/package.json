@@ -1,8 +1,8 @@
 {
-  "name": "@suilend/springsui-sdk",
+  "name": "@suilend/springsui-cli",
   "version": "1.0.0",
   "private": true,
-  "description": "A TypeScript SDK for interacting with the SpringSui program",
+  "description": "A CLI for interacting with the SpringSui program",
   "author": "Suilend",
   "license": "MIT",
   "main": "./src/index.ts",
