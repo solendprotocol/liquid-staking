@@ -169,6 +169,97 @@ module liquid_staking::storage_tests {
         scenario.end();
     }
 
+    #[test]
+    fun test_refresh_skip_epoch() {
+        let mut scenario = test_scenario::begin(@0x0);
+
+        setup_sui_system(&mut scenario, vector[100, 100]);
+
+        let staked_sui = stake_with(0, 100, &mut scenario);
+
+        let mut storage = new(scenario.ctx());
+        assert!(storage.total_sui_supply() == 0, 0);
+
+        let mut system_state = scenario.take_shared<SuiSystemState>();
+
+        storage.join_stake(&mut system_state, staked_sui, scenario.ctx());
+        test_scenario::return_shared(system_state);
+
+        assert!(storage.validators().length() == 1, 0);
+        assert!(storage.total_sui_supply() == 100 * MIST_PER_SUI, 0);
+        assert!(storage.validators()[0].total_sui_amount() == 100 * MIST_PER_SUI, 0);
+        assert!(storage.validators()[0].active_stake().is_none(), 0);
+        assert!(storage.validators()[0].inactive_stake().borrow().staked_sui_amount() == 100 * MIST_PER_SUI, 0);
+
+        // stake now looks like [200, 100] => [300, 200]
+        advance_epoch_with_reward_amounts(0, 200, &mut scenario);
+        // stake now looks like [300, 200] => [450, 300]
+        advance_epoch_with_reward_amounts(0, 300, &mut scenario);
+
+        let mut system_state = scenario.take_shared<SuiSystemState>();
+        storage.refresh(&mut system_state, scenario.ctx());
+
+        std::debug::print(&storage);
+
+        assert!(storage.validators().length() == 1, 0);
+        assert!(storage.total_sui_supply() == 150 * MIST_PER_SUI, 0);
+        assert!(storage.validators()[0].total_sui_amount() == 150 * MIST_PER_SUI, 0);
+        assert!(storage.validators()[0].active_stake().borrow().value() == 50 * MIST_PER_SUI, 0);
+        assert!(storage.validators()[0].inactive_stake().is_none(), 0);
+        assert!(storage.validators()[0].exchange_rate().sui_amount() == 450 * MIST_PER_SUI, 0);
+        assert!(storage.validators()[0].exchange_rate().pool_token_amount() == 150 * MIST_PER_SUI, 0);
+
+        test_scenario::return_shared(system_state);
+        sui::test_utils::destroy(storage);
+        scenario.end();
+    }
+
+    #[test]
+    fun test_refresh_safe_mode() {
+        let mut scenario = test_scenario::begin(@0x0);
+
+        setup_sui_system(&mut scenario, vector[100, 100]);
+
+        let staked_sui = stake_with(0, 100, &mut scenario);
+
+        let mut storage = new(scenario.ctx());
+        assert!(storage.total_sui_supply() == 0, 0);
+
+        let mut system_state = scenario.take_shared<SuiSystemState>();
+
+        storage.join_stake(&mut system_state, staked_sui, scenario.ctx());
+        test_scenario::return_shared(system_state);
+
+        assert!(storage.validators().length() == 1, 0);
+        assert!(storage.total_sui_supply() == 100 * MIST_PER_SUI, 0);
+        assert!(storage.validators()[0].total_sui_amount() == 100 * MIST_PER_SUI, 0);
+        assert!(storage.validators()[0].active_stake().is_none(), 0);
+        assert!(storage.validators()[0].inactive_stake().borrow().staked_sui_amount() == 100 * MIST_PER_SUI, 0);
+        assert!(storage.validators()[0].exchange_rate().sui_amount() == 100 * MIST_PER_SUI, 0);
+        assert!(storage.validators()[0].exchange_rate().pool_token_amount() == 100 * MIST_PER_SUI, 0);
+        assert!(storage.last_refresh_epoch() == 1, 0);
+
+        // safe mode
+        test_scenario::next_epoch(&mut scenario, @0x0);
+
+        let mut system_state = scenario.take_shared<SuiSystemState>();
+        storage.refresh(&mut system_state, scenario.ctx());
+
+        // storage should use the old exchange rate
+        assert!(storage.validators().length() == 1, 0);
+        assert!(storage.total_sui_supply() == 100 * MIST_PER_SUI, 0);
+        assert!(storage.validators()[0].total_sui_amount() == 100 * MIST_PER_SUI, 0);
+        assert!(storage.validators()[0].active_stake().borrow().value() == 100 * MIST_PER_SUI, 0);
+        assert!(storage.validators()[0].inactive_stake().is_none(), 0);
+        assert!(storage.validators()[0].exchange_rate().sui_amount() == 100 * MIST_PER_SUI, 0);
+        assert!(storage.validators()[0].exchange_rate().pool_token_amount() == 100 * MIST_PER_SUI, 0);
+        assert!(storage.last_refresh_epoch() == 2, 0);
+
+        test_scenario::return_shared(system_state);
+        sui::test_utils::destroy(storage);
+        scenario.end();
+    }
+
     #[test] 
     fun test_join_to_sui_pool() {
         let mut scenario = test_scenario::begin(@0x0);
