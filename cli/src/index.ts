@@ -1,24 +1,29 @@
 import { SuiClient } from "@mysten/sui/client";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { Transaction } from "@mysten/sui/transactions";
-import { fromBase64 } from "@mysten/sui/utils";
+import { fromHex } from "@mysten/sui/utils";
 import { program } from "commander";
-
+import fs from "fs";
 import * as sdk from "../../sdk/src";
 import { LstClient } from "../../sdk/src";
 import { PACKAGE_ID } from "../../sdk/src/_generated/liquid_staking";
 
+
 const LIQUID_STAKING_INFO = {
-  id: "0xdae271405d47f04ab6c824d3b362b7375844ec987a2627845af715fdcd835795",
-  type: "0xba2a31b3b21776d859c9fdfe797f52b069fe8fe0961605ab093ca4eb437d2632::ripleys::RIPLEYS",
+  id: "0x15eda7330c8f99c30e430b4d82fd7ab2af3ead4ae17046fcb224aa9bad394f6b",
+  type: "0x83556891f4a0f233ce7b05cfe7f957d4020492a34f5405b2cb9377d060bef4bf::spring_sui::SPRING_SUI",
   weightHookId:
     "0xf244912738939d351aa762dd98c075f873fd95f2928db5fd9e74fbb01c9a686c",
 };
 
 const RPC_URL = "https://fullnode.mainnet.sui.io";
 
+// const keypair = Ed25519Keypair.fromSecretKey(
+//   fromBase64(process.env.SUI_SECRET_KEY!),
+// );
+
 const keypair = Ed25519Keypair.fromSecretKey(
-  fromBase64(process.env.SUI_SECRET_KEY!),
+  fromHex(fs.readFileSync(process.env.SUI_SECRET_KEY_PATH!).toString()),
 );
 
 async function mint(options: any) {

@@ -25,7 +25,7 @@ const SUI_SYSTEM_STATE_ID =
 const SUILEND_VALIDATOR_ADDRESS =
   "0xce8e537664ba5d1d5a6a857b17bd142097138706281882be6805e17065ecde89";
 const SPRING_SUI_UPGRADE_CAP_ID =
-  "0x393ea4538463add6f405f2b1e3e6d896e17850975c772135843de26d14cd17c6";
+  "0x4dc657b6c0fe896f4b94fee1ceac96312dde0a36b94e799caaec30deb53dcd67";
 
 async function getLatestPackageId(
   client: SuiClient,
@@ -189,6 +189,7 @@ export class LstClient {
     }
 
     if (feeConfigArgs.spreadFee != null) {
+      console.log(`Setting spread fee bps to ${feeConfigArgs.spreadFee}`);
       builder = setSpreadFeeBps(tx, {
         self: builder,
         fee: BigInt(feeConfigArgs.spreadFee),
