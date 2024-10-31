@@ -148,4 +148,8 @@ module liquid_staking::weight {
 
         admin_cap
     }
+
+    public fun admin_cap<P>(self: &WeightHook<P>): &AdminCap<P> {
+        &self.admin_cap
+    }
 }
