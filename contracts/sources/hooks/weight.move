@@ -148,4 +148,13 @@ module liquid_staking::weight {
 
         admin_cap
     }
+
+    public fun admin_cap<P>(
+        self: &WeightHook<P>, 
+        _: &WeightHookAdminCap<P>
+    ): &AdminCap<P> {
+        self.version.assert_version(CURRENT_VERSION);
+
+        &self.admin_cap
+    }
 }
