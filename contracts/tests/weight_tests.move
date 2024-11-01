@@ -103,6 +103,20 @@ module liquid_staking::weight_tests {
         assert!(lst_info.storage().validators().borrow(1).total_sui_amount() == 0, 0);
         assert!(lst_info.storage().validators().borrow(2).total_sui_amount() == 100 * MIST_PER_SUI, 0);
 
+        // test update fees
+        let new_fees = fees::new_builder(scenario.ctx()).set_sui_mint_fee_bps(100).to_fee_config();
+        weight_hook.update_fees(&weight_hook_admin_cap, &mut lst_info, new_fees);
+
+        assert!(lst_info.fee_config().sui_mint_fee_bps() == 100, 0);
+
+        // mint some lst
+        let sui = coin::mint_for_testing(100 * MIST_PER_SUI, scenario.ctx());
+        let lst2 = lst_info.mint(&mut system_state, sui, scenario.ctx());
+
+        // test collect fees
+        let collected_fees = weight_hook.collect_fees(&weight_hook_admin_cap, &mut lst_info, &mut system_state, scenario.ctx());
+        assert!(collected_fees.value() == MIST_PER_SUI, 0);
+
         // sharing to make sure shared object deletion actually works lol
         transfer::public_share_object(weight_hook);
         scenario.next_tx(@0x0);
@@ -115,6 +129,8 @@ module liquid_staking::weight_tests {
         sui::test_utils::destroy(admin_cap);
         sui::test_utils::destroy(lst_info);
         sui::test_utils::destroy(lst);
+        sui::test_utils::destroy(lst2);
+        sui::test_utils::destroy(collected_fees);
 
         scenario.end(); 
      }
