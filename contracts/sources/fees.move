@@ -1,6 +1,5 @@
 module liquid_staking::fees {
     use sui::bag::{Self, Bag};
-    use std::u64::max;
 
     // Errors
     const EInvalidFeeConfig: u64 = 0;

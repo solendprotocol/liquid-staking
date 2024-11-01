@@ -3,10 +3,13 @@
 module liquid_staking::weight {
     use sui_system::sui_system::{SuiSystemState};
     use liquid_staking::liquid_staking::{LiquidStakingInfo, AdminCap};
+    use liquid_staking::fees::{FeeConfig};
     use sui::vec_map::{Self, VecMap};
     use sui::bag::{Self, Bag};
     use liquid_staking::version::{Self, Version};
     use sui::package;
+    use sui::coin::Coin;
+    use sui::sui::SUI;
 
     /* Constants */
     const CURRENT_VERSION: u16 = 1;
@@ -62,6 +65,29 @@ module liquid_staking::weight {
         });
 
         self.total_weight = total_weight;
+    }
+
+    public fun update_fees<P>(
+        self: &mut WeightHook<P>,
+        _: &WeightHookAdminCap<P>,
+        liquid_staking_info: &mut LiquidStakingInfo<P>,
+        fee_config: FeeConfig,
+    ) {
+        self.version.assert_version_and_upgrade(CURRENT_VERSION);
+
+        liquid_staking_info.update_fees(&self.admin_cap, fee_config);
+    }
+
+    public fun collect_fees<P>(
+        self: &mut WeightHook<P>,
+        _: &WeightHookAdminCap<P>,
+        liquid_staking_info: &mut LiquidStakingInfo<P>,
+        system_state: &mut SuiSystemState,
+        ctx: &mut TxContext,
+    ): Coin<SUI> {
+        self.version.assert_version_and_upgrade(CURRENT_VERSION);
+
+        liquid_staking_info.collect_fees(system_state, &self.admin_cap, ctx)
     }
 
     public fun rebalance<P>(
