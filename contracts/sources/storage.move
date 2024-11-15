@@ -16,6 +16,7 @@ module liquid_staking::storage {
     const MIN_STAKE_THRESHOLD: u64 = 1_000_000_000;
     const MAX_SUI_SUPPLY: u64 = 10_000_000_000 * 1_000_000_000;
     const MAX_VALIDATORS: u64 = 50;
+    const ACTIVE_STAKE_REDEEM_OFFSET: u64 = 100;
 
     /// The Storage struct holds all stake for the LST.
     public struct Storage has store {
@@ -372,6 +373,8 @@ module liquid_staking::storage {
             return 0
         };
 
+        let target_unstake_sui_amount = max(target_unstake_sui_amount, MIN_STAKE_THRESHOLD);
+
         let fungible_staked_sui_amount = validator_info.active_stake.borrow().value();
         let total_sui_amount = get_sui_amount(
             &validator_info.exchange_rate, 
@@ -465,7 +468,10 @@ module liquid_staking::storage {
                 self.unstake_approx_n_sui_from_active_stake(
                     system_state,
                     i,
-                    max_sui_amount_out - sui_pool_value,
+                    // unstake a bit more than required. 
+                    // this is to account for the fact that redeeming active stake
+                    // will sometimes result in less sui than expected (roughly 2 mist)
+                    max_sui_amount_out - sui_pool_value + ACTIVE_STAKE_REDEEM_OFFSET,
                     ctx
                 );
             };

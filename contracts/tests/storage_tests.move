@@ -4,6 +4,7 @@ module liquid_staking::storage_tests {
     use sui::test_scenario::{Self, Scenario};
     use sui_system::governance_test_utils::{
         advance_epoch_with_reward_amounts,
+        advance_epoch_with_reward_amounts_return_rebate,
     };
     use sui::address;
     use sui::coin::{Self};
@@ -19,11 +20,6 @@ module liquid_staking::storage_tests {
         use sui_system::governance_test_utils::{
             create_validators_with_stakes,
             create_sui_system_state_for_testing,
-            // stake_with,
-            // remove_validator,
-            // remove_validator_candidate,
-            // total_sui_balance,
-            // unstake,
         };
 
         let validators = create_validators_with_stakes(stakes, scenario.ctx());
@@ -35,6 +31,10 @@ module liquid_staking::storage_tests {
     const MIST_PER_SUI: u64 = 1_000_000_000;
 
     fun stake_with(validator_index: u64, amount: u64, scenario: &mut Scenario): StakedSui {
+        stake_with_granular(validator_index, amount * MIST_PER_SUI, scenario)
+    }
+
+    fun stake_with_granular(validator_index: u64, amount: u64, scenario: &mut Scenario): StakedSui {
         scenario.next_tx(@0x0);
 
         let mut system_state = scenario.take_shared<SuiSystemState>();
@@ -42,7 +42,7 @@ module liquid_staking::storage_tests {
         let ctx = scenario.ctx();
 
         let staked_sui = system_state.request_add_stake_non_entry(
-            coin::mint_for_testing(amount * MIST_PER_SUI, ctx), 
+            coin::mint_for_testing(amount, ctx), 
             address::from_u256(validator_index as u256), 
             ctx
         );
@@ -942,7 +942,7 @@ module liquid_staking::storage_tests {
         let amount = storage.unstake_approx_n_sui_from_active_stake(
             &mut system_state, 
             0, 
-            MIST_PER_SUI, 
+            1, 
             scenario.ctx()
         );
 
@@ -1241,6 +1241,53 @@ module liquid_staking::storage_tests {
         sui::test_utils::destroy(storage);
         sui::test_utils::destroy(sui);
         
+        scenario.end();
+    }
+
+    #[random_test]
+    fun test_random_split_n_sui_from_active_stake(
+        initial_validator_stake_amount: u64,
+        initial_stake_amount: u64,
+        reward_amount: u64,
+        split_amount: u64
+    ) {
+        let mut scenario = test_scenario::begin(@0x0);
+
+        setup_sui_system(&mut scenario, vector[initial_validator_stake_amount % 10_000_000]);
+
+        let active_staked_sui = stake_with_granular(
+            0,
+            initial_stake_amount % (1_000_000 * MIST_PER_SUI) + MIST_PER_SUI,
+            &mut scenario
+        );
+
+        advance_epoch_with_reward_amounts(0, 1, &mut scenario);
+        advance_epoch_with_reward_amounts(0, 1, &mut scenario);
+        advance_epoch_with_reward_amounts(0, 1, &mut scenario);
+
+        let storage_rebate = advance_epoch_with_reward_amounts_return_rebate(
+            0,
+            reward_amount % (100_000 * MIST_PER_SUI), 
+            0,
+            0,
+            &mut scenario
+        );
+        sui::test_utils::destroy(storage_rebate);
+
+        let mut system_state = scenario.take_shared<SuiSystemState>();
+        let mut storage = new(scenario.ctx());
+        storage.join_stake(&mut system_state, active_staked_sui, scenario.ctx());
+
+        let total_sui_supply = storage.total_sui_supply();
+        let sui = storage.split_n_sui(
+            &mut system_state,
+            (split_amount % total_sui_supply) % 4001,
+            scenario.ctx()
+        );
+
+        test_scenario::return_shared(system_state);
+        sui::test_utils::destroy(storage);
+        sui::test_utils::destroy(sui);
         scenario.end();
     }
 
