@@ -11,6 +11,8 @@ module liquid_staking::weight {
     use sui::coin::Coin;
     use sui::sui::SUI;
     use liquid_staking::registry::{Registry};
+    use std::type_name::{Self, TypeName};
+    use liquid_staking::events::{emit_event};
 
     /* Constants */
     const CURRENT_VERSION: u16 = 1;
@@ -34,6 +36,13 @@ module liquid_staking::weight {
         weight_hook_id: ID,
     }
 
+    /* Events */
+    public struct CreateEvent has copy, drop {
+        typename: TypeName,
+        weight_hook_id: ID,
+        weight_hook_admin_cap_id: ID
+    }
+
     fun init(otw: WEIGHT, ctx: &mut TxContext) {
         package::claim_and_keep(otw, ctx)
     }
@@ -42,17 +51,23 @@ module liquid_staking::weight {
         admin_cap: AdminCap<P>,
         ctx: &mut TxContext
     ): (WeightHook<P>, WeightHookAdminCap<P>) {
-        (
-            WeightHook {
+        let weight_hook = WeightHook {
                 id: object::new(ctx),
                 validator_addresses_and_weights: vec_map::empty(),
                 total_weight: 0,
                 admin_cap,
                 version: version::new(CURRENT_VERSION),
                 extra_fields: bag::new(ctx)
-            },
-            WeightHookAdminCap { id: object::new(ctx) }
-        )
+        };
+        let weight_hook_admin_cap = WeightHookAdminCap { id: object::new(ctx) };
+
+        emit_event(CreateEvent {
+            typename: type_name::get<P>(),
+            weight_hook_id: *weight_hook.id.as_inner(),
+            weight_hook_admin_cap_id: *weight_hook_admin_cap.id.as_inner(),
+        });
+
+        (weight_hook, weight_hook_admin_cap)
     }
 
     public fun add_to_registry<P>(
