@@ -10,6 +10,7 @@ module liquid_staking::weight {
     use sui::package;
     use sui::coin::Coin;
     use sui::sui::SUI;
+    use liquid_staking::registry::{Registry};
 
     /* Constants */
     const CURRENT_VERSION: u16 = 1;
@@ -28,6 +29,10 @@ module liquid_staking::weight {
     }
 
     public struct WEIGHT has drop {}
+
+    public struct RegistryInfo has store {
+        weight_hook_id: ID,
+    }
 
     fun init(otw: WEIGHT, ctx: &mut TxContext) {
         package::claim_and_keep(otw, ctx)
@@ -48,6 +53,20 @@ module liquid_staking::weight {
             },
             WeightHookAdminCap { id: object::new(ctx) }
         )
+    }
+
+    public fun add_to_registry<P>(
+        self: &WeightHook<P>,
+        registry: &mut Registry,
+        liquid_staking_info: &LiquidStakingInfo<P>,
+    ) {
+        registry.add_to_registry(
+            &self.admin_cap,
+            liquid_staking_info,
+            RegistryInfo {
+                weight_hook_id: *self.id.as_inner(),
+            }
+        );
     }
 
     public fun set_validator_addresses_and_weights<P>(
@@ -182,5 +201,9 @@ module liquid_staking::weight {
         self.version.assert_version(CURRENT_VERSION);
 
         &self.admin_cap
+    }
+
+    public fun weight_hook_id(self: &RegistryInfo): ID {
+        self.weight_hook_id
     }
 }
