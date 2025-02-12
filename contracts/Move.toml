@@ -22,7 +22,7 @@ SuiSystem = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/su
 # Override = { local = "../conflicting/version", override = true }
 
 [addresses]
-liquid_staking = "0xb0575765166030556a6eafd3b1b970eba8183ff748860680245b9edd41c716e7"
+liquid_staking = "0x82e6f4f75441eae97d2d5850f41a09d28c7b64a05b067d37748d471f43aaf3f7"
 
 # Named addresses will be accessible in Move as `@name`. They're also exported:
 # for example, `std = "0x1"` is exported by the Standard Library.
