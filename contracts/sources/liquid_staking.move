@@ -284,7 +284,9 @@ module liquid_staking::liquid_staking {
 
         let sui_amount_out = self.lst_amount_to_sui_amount(lst.value());
         let mut sui = if (is_custom_redeem) {
-            self.storage.split_up_to_n_sui_from_sui_pool(sui_amount_out)
+            // the hook is responsible for unstakeingenough from the validators, so here we only
+            // take from the sui pool, and error otherwise.
+            self.storage.split_from_sui_pool(sui_amount_out)
         } else {
             self.storage.split_n_sui(system_state, sui_amount_out, ctx)
         };
