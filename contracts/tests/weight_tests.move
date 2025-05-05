@@ -176,10 +176,10 @@ module liquid_staking::weight_tests {
         assert!(lst_info.storage().validators().borrow(1).total_sui_amount() == 75 * MIST_PER_SUI, 0);
 
         let lst_to_unstake = lst.split(10 * MIST_PER_SUI, scenario.ctx());
-        let custom_redeem_request = lst_info.custom_redeem_request(lst_to_unstake,&mut system_state, scenario.ctx());
-        weight_hook.handle_custom_redeem_request(&mut system_state, &mut lst_info, &custom_redeem_request, scenario.ctx());
+        let mut custom_redeem_request = lst_info.custom_redeem_request(lst_to_unstake,&mut system_state, scenario.ctx());
+        weight_hook.handle_custom_redeem_request(&mut system_state, &mut lst_info, &mut custom_redeem_request, scenario.ctx());
 
-        std::debug::print(lst_info.storage().validators());
+        // std::debug::print(lst_info.storage().validators());
         assert!(lst_info.storage().validators().borrow(0).total_sui_amount() == 25 * MIST_PER_SUI - 2_500_000_000, 0);
         assert!(lst_info.storage().validators().borrow(1).total_sui_amount() == 75 * MIST_PER_SUI - 7_500_000_000, 0);
 

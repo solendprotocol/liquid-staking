@@ -22,6 +22,7 @@ module liquid_staking::liquid_staking {
     const EValidatorNotFound: u64 = 3;
     const EZeroLstSupply: u64 = 4;
     const EZeroLstMinted: u64 = 5;
+    const ERequestNotProcessed: u64 = 6;
 
     /* Constants */
     const CURRENT_VERSION: u16 = 1;
@@ -48,6 +49,7 @@ module liquid_staking::liquid_staking {
     #[allow(lint(coin_field))]
     public struct CustomRedeemRequest<phantom P> {
         lst: Coin<P>,
+        request_processed: bool // the hook will mark this as true
     }
 
     /* Events */
@@ -309,7 +311,7 @@ module liquid_staking::liquid_staking {
         // invariant: sui_out / lst_in <= old_sui_supply / old_lst_supply
         // -> sui_out * old_lst_supply <= lst_in * old_sui_supply
         assert!(
-            (sui.value() as u128) * old_lst_supply <= (lst.value() as u128) * old_sui_supply,
+            (sui.value() as u128 + (redeem_fee_amount as u128)) * old_lst_supply <= (lst.value() as u128) * old_sui_supply,
             ERedeemInvariantViolated
         );
 
@@ -327,7 +329,7 @@ module liquid_staking::liquid_staking {
         self.version.assert_version_and_upgrade(CURRENT_VERSION);
         self.refresh(system_state, ctx);
 
-        CustomRedeemRequest { lst }
+        CustomRedeemRequest { lst, request_processed: false }
     }
 
     public fun custom_redeem<P: drop>(
@@ -336,7 +338,9 @@ module liquid_staking::liquid_staking {
         system_state: &mut SuiSystemState, 
         ctx: &mut TxContext
     ): Coin<SUI> {
-        let CustomRedeemRequest { lst } = request;
+        let CustomRedeemRequest { lst, request_processed } = request;
+        assert!(request_processed, ERequestNotProcessed);
+
         self.redeem_internal(lst, system_state, true, ctx)
     }
 
@@ -485,6 +489,13 @@ module liquid_staking::liquid_staking {
         };
 
         false
+    }
+
+    public(package) fun mark_redeem_request_as_processed<P>(
+        _: &AdminCap<P>,
+        request: &mut CustomRedeemRequest<P>
+    ) {
+        request.request_processed = true;
     }
 
     /* Private Functions */

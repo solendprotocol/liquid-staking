@@ -107,7 +107,7 @@ module liquid_staking::weight {
         self: &mut WeightHook<P>,
         system_state: &mut SuiSystemState,
         liquid_staking_info: &mut LiquidStakingInfo<P>,
-        request: &CustomRedeemRequest<P>,
+        request: &mut CustomRedeemRequest<P>,
         ctx: &mut TxContext
     ) {
         liquid_staking_info.refresh(system_state, ctx);
@@ -116,7 +116,8 @@ module liquid_staking::weight {
         let sui_unstake_amount = liquid_staking_info.lst_amount_to_sui_amount(request.lst().value());
         let total_sui_to_allocate = total_sui_supply - sui_unstake_amount;
 
-        self.rebalance_internal(system_state, liquid_staking_info, total_sui_to_allocate, ctx)
+        self.rebalance_internal(system_state, liquid_staking_info, total_sui_to_allocate, ctx);
+        self.admin_cap.mark_redeem_request_as_processed(request);
     }
 
     fun rebalance_internal<P>(

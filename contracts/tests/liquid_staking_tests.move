@@ -774,4 +774,40 @@ module liquid_staking::liquid_staking_tests {
 
         scenario.end();
     }
+
+    #[test]
+    #[expected_failure(abort_code = 6, location = liquid_staking::liquid_staking)]
+    fun test_custom_redeem_request_fail_not_processed() {
+        let mut scenario = test_scenario::begin(@0x0);
+
+        setup_sui_system(&mut scenario, vector[100, 100, 100]);
+        scenario.next_tx(@0x0);
+
+        let (admin_cap, mut lst_info) = create_lst<TEST>(
+            fees::new_builder(scenario.ctx()).set_custom_redeem_fee_bps(100).to_fee_config(),
+            coin::create_treasury_cap_for_testing(scenario.ctx()),
+            scenario.ctx()
+        );
+
+        let mut system_state = scenario.take_shared<SuiSystemState>();
+        let sui = coin::mint_for_testing(100 * MIST_PER_SUI, scenario.ctx());
+        let mut lst = lst_info.mint(&mut system_state, sui, scenario.ctx());
+
+        assert!(lst_info.total_lst_supply() == 100 * MIST_PER_SUI, 0);
+        assert!(lst_info.storage().total_sui_supply() == 100 * MIST_PER_SUI, 0);
+
+        let lst_to_unstake = lst.split(10 * MIST_PER_SUI, scenario.ctx());
+        let custom_redeem_request = lst_info.custom_redeem_request(lst_to_unstake,&mut system_state, scenario.ctx());
+
+        let sui = lst_info.custom_redeem(custom_redeem_request, &mut system_state, scenario.ctx());
+
+        test_scenario::return_shared(system_state);
+
+        sui::test_utils::destroy(lst_info);
+        sui::test_utils::destroy(lst);
+        sui::test_utils::destroy(sui);
+        sui::test_utils::destroy(admin_cap);
+
+        scenario.end(); 
+    }
 }
