@@ -22,6 +22,7 @@ module liquid_staking::liquid_staking {
     const EValidatorNotFound: u64 = 3;
     const EZeroLstSupply: u64 = 4;
     const EZeroLstMinted: u64 = 5;
+    const ERequestNotProcessed: u64 = 6;
 
     /* Constants */
     const CURRENT_VERSION: u16 = 1;
@@ -42,6 +43,13 @@ module liquid_staking::liquid_staking {
 
     public struct AdminCap<phantom P> has key, store { 
         id: UID
+    }
+
+    /// hot potato that indicates a custom redeem request
+    #[allow(lint(coin_field))]
+    public struct CustomRedeemRequest<phantom P> {
+        lst: Coin<P>,
+        request_processed: bool // the hook will mark this as true
     }
 
     /* Events */
@@ -111,6 +119,10 @@ module liquid_staking::liquid_staking {
 
     public fun fee_config<P>(self: &LiquidStakingInfo<P>): &FeeConfig {
         self.fee_config.get()
+    }
+
+    public fun lst<P>(self: &CustomRedeemRequest<P>): &Coin<P> {
+        &self.lst
     }
 
     #[test_only]
@@ -257,16 +269,36 @@ module liquid_staking::liquid_staking {
         system_state: &mut SuiSystemState, 
         ctx: &mut TxContext
     ): Coin<SUI> {
+        self.redeem_internal(lst, system_state, false, ctx)
+    }
+
+    fun redeem_internal<P: drop>(
+        self: &mut LiquidStakingInfo<P>,
+        lst: Coin<P>,
+        system_state: &mut SuiSystemState, 
+        is_custom_redeem: bool,
+        ctx: &mut TxContext
+    ): Coin<SUI> {
         self.refresh(system_state, ctx);
 
         let old_sui_supply = (self.total_sui_supply() as u128);
         let old_lst_supply = (self.total_lst_supply() as u128);
 
         let sui_amount_out = self.lst_amount_to_sui_amount(lst.value());
-        let mut sui = self.storage.split_n_sui(system_state, sui_amount_out, ctx);
+        let mut sui = if (is_custom_redeem) {
+            // the hook is responsible for unstakeingenough from the validators, so here we only
+            // take from the sui pool, and error otherwise.
+            self.storage.split_from_sui_pool(sui_amount_out)
+        } else {
+            self.storage.split_n_sui(system_state, sui_amount_out, ctx)
+        };
 
         // deduct fee
-        let redeem_fee_amount = self.fee_config.get().calculate_redeem_fee(sui.value());
+        let redeem_fee_amount = if (is_custom_redeem) {
+            self.fee_config.get().calculate_custom_redeem_fee(sui.value())
+        } else {
+            self.fee_config.get().calculate_redeem_fee(sui.value())
+        };
         self.fees.join(sui.split(redeem_fee_amount as u64));
 
         emit_event(RedeemEvent {
@@ -279,7 +311,7 @@ module liquid_staking::liquid_staking {
         // invariant: sui_out / lst_in <= old_sui_supply / old_lst_supply
         // -> sui_out * old_lst_supply <= lst_in * old_sui_supply
         assert!(
-            (sui.value() as u128) * old_lst_supply <= (lst.value() as u128) * old_sui_supply,
+            (sui.value() as u128 + (redeem_fee_amount as u128)) * old_lst_supply <= (lst.value() as u128) * old_sui_supply,
             ERedeemInvariantViolated
         );
 
@@ -288,6 +320,29 @@ module liquid_staking::liquid_staking {
         coin::from_balance(sui, ctx)
     }
 
+    public fun custom_redeem_request<P: drop>(
+        self: &mut LiquidStakingInfo<P>,
+        lst: Coin<P>,
+        system_state: &mut SuiSystemState,
+        ctx: &mut TxContext
+    ): CustomRedeemRequest<P> {
+        self.version.assert_version_and_upgrade(CURRENT_VERSION);
+        self.refresh(system_state, ctx);
+
+        CustomRedeemRequest { lst, request_processed: false }
+    }
+
+    public fun custom_redeem<P: drop>(
+        self: &mut LiquidStakingInfo<P>,
+        request: CustomRedeemRequest<P>,
+        system_state: &mut SuiSystemState, 
+        ctx: &mut TxContext
+    ): Coin<SUI> {
+        let CustomRedeemRequest { lst, request_processed } = request;
+        assert!(request_processed, ERequestNotProcessed);
+
+        self.redeem_internal(lst, system_state, true, ctx)
+    }
 
     // Admin Functions
     public fun change_validator_priority<P>(
@@ -436,6 +491,13 @@ module liquid_staking::liquid_staking {
         false
     }
 
+    public(package) fun mark_redeem_request_as_processed<P>(
+        _: &AdminCap<P>,
+        request: &mut CustomRedeemRequest<P>
+    ) {
+        request.request_processed = true;
+    }
+
     /* Private Functions */
 
     fun sui_amount_to_lst_amount<P>(
@@ -456,7 +518,7 @@ module liquid_staking::liquid_staking {
         lst_amount as u64
     }
 
-    fun lst_amount_to_sui_amount<P>(
+    public(package) fun lst_amount_to_sui_amount<P>(
         self: &LiquidStakingInfo<P>, 
         lst_amount: u64
     ): u64 {

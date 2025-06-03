@@ -6,6 +6,7 @@ module liquid_staking::weight {
     use liquid_staking::fees::{FeeConfig};
     use sui::vec_map::{Self, VecMap};
     use sui::bag::{Self, Bag};
+    use liquid_staking::liquid_staking::{CustomRedeemRequest};
     use liquid_staking::version::{Self, Version};
     use sui::package;
     use sui::coin::Coin;
@@ -130,12 +131,40 @@ module liquid_staking::weight {
         liquid_staking_info: &mut LiquidStakingInfo<P>,
         ctx: &mut TxContext
     ) {
+        liquid_staking_info.refresh(system_state, ctx);
+        let total_sui_supply = liquid_staking_info.storage().total_sui_supply(); // we want to allocate the unaccrued spread fees as well
+
+        self.rebalance_internal(system_state, liquid_staking_info, total_sui_supply, ctx)
+    }
+
+    public fun handle_custom_redeem_request<P>(
+        self: &mut WeightHook<P>,
+        system_state: &mut SuiSystemState,
+        liquid_staking_info: &mut LiquidStakingInfo<P>,
+        request: &mut CustomRedeemRequest<P>,
+        ctx: &mut TxContext
+    ) {
+        liquid_staking_info.refresh(system_state, ctx);
+
+        let total_sui_supply = liquid_staking_info.storage().total_sui_supply(); // we want to allocate the unaccrued spread fees as well
+        let sui_unstake_amount = liquid_staking_info.lst_amount_to_sui_amount(request.lst().value());
+        let total_sui_to_allocate = total_sui_supply - sui_unstake_amount;
+
+        self.rebalance_internal(system_state, liquid_staking_info, total_sui_to_allocate, ctx);
+        self.admin_cap.mark_redeem_request_as_processed(request);
+    }
+
+    fun rebalance_internal<P>(
+        self: &mut WeightHook<P>,
+        system_state: &mut SuiSystemState,
+        liquid_staking_info: &mut LiquidStakingInfo<P>,
+        total_sui_to_allocate: u64,
+        ctx: &mut TxContext
+    ) {
         self.version.assert_version_and_upgrade(CURRENT_VERSION);
         if (self.total_weight == 0) {
             return
         };
-
-        liquid_staking_info.refresh(system_state, ctx);
 
         let mut validator_addresses_and_weights = self.validator_addresses_and_weights;
 
@@ -150,10 +179,8 @@ module liquid_staking::weight {
         // 2. calculate current and target amounts of sui for each validator
         let (validator_addresses, validator_weights) = validator_addresses_and_weights.into_keys_values();
 
-        let total_sui_supply = liquid_staking_info.storage().total_sui_supply(); // we want to allocate the unaccrued spread fees as well
-
         let validator_target_amounts  = validator_weights.map!(|weight| {
-            ((total_sui_supply as u128) * (weight as u128) / (self.total_weight as u128)) as u64
+            ((total_sui_to_allocate as u128) * (weight as u128) / (self.total_weight as u128)) as u64
         });
 
         let validator_current_amounts = validator_addresses.map_ref!(|validator_address| {

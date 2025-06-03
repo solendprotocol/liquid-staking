@@ -335,7 +335,7 @@ module liquid_staking::storage {
         self.split_from_sui_pool(sui_amount_out)
     }
 
-    fun split_from_sui_pool(self: &mut Storage, amount: u64): Balance<SUI> {
+    public(package) fun split_from_sui_pool(self: &mut Storage, amount: u64): Balance<SUI> {
         self.total_sui_supply = self.total_sui_supply - amount;
         self.sui_pool.split(amount)
     }

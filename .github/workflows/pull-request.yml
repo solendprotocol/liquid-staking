@@ -21,4 +21,4 @@ jobs:
         run: apt-get install -y git
 
       - name: test
-        run: cd contracts && sui move test
+        run: cd contracts && sui move test --gas-limit 5000000000000

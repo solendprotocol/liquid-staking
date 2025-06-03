@@ -157,6 +157,15 @@ module liquid_staking::fees {
         (((sui_amount as u128) * (self.redeem_fee_bps as u128) + 9999) / 10_000) as u64
     }
 
+    public(package) fun calculate_custom_redeem_fee(self: &FeeConfig, sui_amount: u64): u64 {
+        if (self.custom_redeem_fee_bps == 0) {
+            return 0
+        };
+
+        // ceil(sui_amount * custom_redeem_fee_bps / 10_000)
+        (((sui_amount as u128) * (self.custom_redeem_fee_bps as u128) + 9999) / 10_000) as u64
+    }
+
     #[test_only] use sui::test_scenario::{Self, Scenario};
 
     #[test]
