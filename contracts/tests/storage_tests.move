@@ -437,6 +437,7 @@ module liquid_staking::storage_tests {
     }
 
     #[test]
+    // #[expected_failure(abort_code = 15, location = sui_system::staking_pool)]
     fun test_refresh_inactive_staking_pool_edge_case() {
         let mut scenario = test_scenario::begin(@0x0);
 
@@ -485,18 +486,20 @@ module liquid_staking::storage_tests {
             scenario.ctx(),
         );
         test_scenario::return_shared(system_state);
-        
+
         let staked_sui_2 = stake_with(1, 100, &mut scenario);
 
         // 3. mark candidate as pending active validator
         scenario.next_tx(@0x1);
         let mut system_state = scenario.take_shared<SuiSystemState>();
+        assert!(!system_state.active_validator_addresses().contains(&@0x1), 0);
         system_state.request_add_validator(scenario.ctx());
         test_scenario::return_shared(system_state);
 
         advance_epoch_with_reward_amounts(0, 0, &mut scenario);
 
         let mut system_state = scenario.take_shared<SuiSystemState>();
+        // assert!(!system_state.active_validator_addresses().contains(&@0x1), 0);
         storage.refresh(&mut system_state, scenario.ctx());
         test_scenario::return_shared(system_state);
 
