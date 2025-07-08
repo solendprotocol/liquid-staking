@@ -15,6 +15,7 @@ module liquid_staking::liquid_staking {
     use std::type_name::{Self, TypeName};
     use sui::package;
     use std::string::String;
+    use std::ascii;
 
     /* Errors */
     const EInvalidLstCreation: u64 = 0;
@@ -497,9 +498,9 @@ module liquid_staking::liquid_staking {
         _: &AdminCap<P>,
         metadata: &mut CoinMetadata<P>,
         name: Option<String>,
-        symbol: Option<String>,
+        symbol: Option<ascii::String>,
         description: Option<String>,
-        icon_url: Option<String>,
+        icon_url: Option<ascii::String>,
     ) {
         let treasury_cap = &self.lst_treasury_cap;
 
@@ -508,7 +509,7 @@ module liquid_staking::liquid_staking {
         };
 
         if (symbol.is_some()) {
-            treasury_cap.update_symbol(metadata, symbol.destroy_some().to_ascii());
+            treasury_cap.update_symbol(metadata, symbol.destroy_some());
         };
 
         if (description.is_some()) {
@@ -516,7 +517,7 @@ module liquid_staking::liquid_staking {
         };
 
         if (icon_url.is_some()) {
-            treasury_cap.update_icon_url(metadata, icon_url.destroy_some().to_ascii());
+            treasury_cap.update_icon_url(metadata, icon_url.destroy_some());
         };
     }
 
