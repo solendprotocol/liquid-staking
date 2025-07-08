@@ -141,10 +141,11 @@ module liquid_staking::storage {
         let mut i = self.validator_infos.length();
         while (i > 0) {
             i = i - 1;
+            let validator_active = active_validator_addresses.contains(&self.validator_infos[i].validator_address);
 
             // if validator is inactive, withdraw all stake.
             // TODO: replace with system_state.is_active_staking_pool once it's live.
-            if (!active_validator_addresses.contains(&self.validator_infos[i].validator_address)) {
+            if (!validator_active) {
                 // technically this is using a stale exchange rate, but it doesn't matter because we're unstaking everything.
                 // this is done before fetching the exchange rate because i don't want the function to abort if an epoch is skipped.
                 self.unstake_approx_n_sui_from_validator(system_state, i, MAX_SUI_SUPPLY, ctx);
@@ -172,7 +173,7 @@ module liquid_staking::storage {
 
             self.refresh_validator_info(i);
 
-            if (self.validator_infos[i].inactive_stake.is_some()) {
+            if (self.validator_infos[i].inactive_stake.is_some() && validator_active) {
                 let inactive_stake = self.take_from_inactive_stake(i);
                 let fungible_staked_sui = system_state.convert_to_fungible_staked_sui(inactive_stake, ctx);
                 self.join_fungible_staked_sui_to_validator(i, fungible_staked_sui);
