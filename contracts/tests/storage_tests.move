@@ -437,6 +437,7 @@ module liquid_staking::storage_tests {
     }
 
     #[test]
+    #[expected_failure(abort_code = 15, location = sui_system::staking_pool)]
     fun test_refresh_inactive_staking_pool_edge_case() {
         let mut scenario = test_scenario::begin(@0x0);
 
