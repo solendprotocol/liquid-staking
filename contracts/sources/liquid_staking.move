@@ -8,12 +8,14 @@ module liquid_staking::liquid_staking {
     use sui::bag::{Self, Bag};
     use liquid_staking::fees::{FeeConfig};
     use liquid_staking::cell::{Self, Cell};
-    use sui::coin::{TreasuryCap};
+    use sui::coin::{TreasuryCap, CoinMetadata};
     use liquid_staking::version::{Self, Version};
     use liquid_staking::events::{emit_event};
     use sui_system::staking_pool::{FungibleStakedSui};
     use std::type_name::{Self, TypeName};
     use sui::package;
+    use std::string::String;
+    use std::ascii;
 
     /* Errors */
     const EInvalidLstCreation: u64 = 0;
@@ -489,6 +491,34 @@ module liquid_staking::liquid_staking {
         };
 
         false
+    }
+
+    public fun update_metadata<P>(
+        self: &mut LiquidStakingInfo<P>,
+        _: &AdminCap<P>,
+        metadata: &mut CoinMetadata<P>,
+        name: Option<String>,
+        symbol: Option<ascii::String>,
+        description: Option<String>,
+        icon_url: Option<ascii::String>,
+    ) {
+        let treasury_cap = &self.lst_treasury_cap;
+
+        if (name.is_some()) {
+            treasury_cap.update_name(metadata, name.destroy_some());
+        };
+
+        if (symbol.is_some()) {
+            treasury_cap.update_symbol(metadata, symbol.destroy_some());
+        };
+
+        if (description.is_some()) {
+            treasury_cap.update_description(metadata, description.destroy_some());
+        };
+
+        if (icon_url.is_some()) {
+            treasury_cap.update_icon_url(metadata, icon_url.destroy_some());
+        };
     }
 
     public(package) fun mark_redeem_request_as_processed<P>(
