@@ -5,7 +5,6 @@ module liquid_staking::liquid_staking {
     use sui::coin::{Self, Coin};
     use sui::sui::SUI;
     use liquid_staking::storage::{Self, Storage};
-    use liquid_staking::weight::{WeightHook, WeightHookAdminCap};
     use sui::bag::{Self, Bag};
     use liquid_staking::fees::{FeeConfig};
     use liquid_staking::cell::{Self, Cell};
