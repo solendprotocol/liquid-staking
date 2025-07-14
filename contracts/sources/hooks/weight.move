@@ -157,7 +157,7 @@ module liquid_staking::weight {
     }
 
     public fun update_metadata<P>(
-        weight_hook: &WeightHook<P>,
+        self: &WeightHook<P>,
         _: &WeightHookAdminCap<P>,
         liquid_staking_info: &mut LiquidStakingInfo<P>,
         metadata: &mut sui::coin::CoinMetadata<P>,
@@ -166,7 +166,7 @@ module liquid_staking::weight {
         description: Option<String>,
         icon_url: Option<ascii::String>,
     ) {
-        let admin_cap = &weight_hook.admin_cap;
+        let admin_cap = &self.admin_cap;
 
         liquid_staking_info.update_metadata(
             admin_cap, metadata, name, symbol, description, icon_url
