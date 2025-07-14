@@ -14,6 +14,8 @@ module liquid_staking::weight {
     use liquid_staking::registry::{Registry};
     use std::type_name::{Self, TypeName};
     use liquid_staking::events::{emit_event};
+    use std::string::String;
+    use std::ascii;
 
     /* Constants */
     const CURRENT_VERSION: u16 = 1;
@@ -153,6 +155,24 @@ module liquid_staking::weight {
         self.rebalance_internal(system_state, liquid_staking_info, total_sui_to_allocate, ctx);
         self.admin_cap.mark_redeem_request_as_processed(request);
     }
+
+    public fun update_metadata<P>(
+        weight_hook: &WeightHook<P>,
+        weight_cap: &WeightHookAdminCap<P>,
+        liquid_staking_info: &mut LiquidStakingInfo<P>,
+        metadata: &mut sui::coin::CoinMetadata<P>,
+        name: Option<String>,
+        symbol: Option<ascii::String>,
+        description: Option<String>,
+        icon_url: Option<ascii::String>,
+    ) {
+        let admin_cap = weight_hook.admin_cap(weight_cap);
+
+        liquid_staking_info.update_metadata(
+            admin_cap, metadata, name, symbol, description, icon_url
+        );
+    }
+
 
     fun rebalance_internal<P>(
         self: &mut WeightHook<P>,
